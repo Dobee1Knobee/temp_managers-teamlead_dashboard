@@ -197,6 +197,7 @@ interface BufferState {
 export interface OrderState extends BufferState {
     // ===== ДАННЫЕ =====
     currentOrder: Order | null;
+    unclaimedRequests: number;
     formData: FormData;
     selectedServices: ServiceItem[];
     orders: Order[];
@@ -339,6 +340,9 @@ export interface OrderState extends BufferState {
     hasNextPage: () => boolean;
     hasPrevPage: () => boolean;
 
+    // ===== ЗАКЛЕЙМЕННЫЕ ЗАКАЗЫ =====
+    getUnclaimedRequests: () => Promise<number>;
+    setUnclaimedRequests: (count: number) => void;
     // ===== УТИЛИТЫ =====
     setCurrentUser: (user: { userId: string; userName: string; userAt: string; team: string; manager_id: string,shift: boolean }) => void;
     setLoading: (loading: boolean) => void;
@@ -413,6 +417,7 @@ export const useOrderStore = create<OrderState>()(
             orders: [],
             teamBufferOrders: [],
             telegramOrders: [],
+            unclaimedRequests: 0,
             myOrders: [],
             currentTelegramOrder: null,
             isWorkingOnTelegramOrder: false,
@@ -485,6 +490,21 @@ export const useOrderStore = create<OrderState>()(
 
             hideAddressFitNotification: () => {
                 set({ addressFitNotification: null }, false, 'hideAddressFitNotification');
+            },
+            getUnclaimedRequests: async () => {
+                const { currentUser } = get();
+                if (!currentUser) {
+                    set({ bufferError: 'Пользователь не авторизован' });
+                    return 0;
+                }
+                const response = await fetch(`https://bot-crm-backend-756832582185.us-central1.run.app/api/get-unclaimed-requests/${currentUser.userAt}`);
+                const data = await response.json();
+                set({ unclaimedRequests: data.unclaimedRequests });
+                return data.unclaimedRequests;
+            },
+
+            setUnclaimedRequests: (count: number) => {
+                set({ unclaimedRequests: count });
             },
 
 

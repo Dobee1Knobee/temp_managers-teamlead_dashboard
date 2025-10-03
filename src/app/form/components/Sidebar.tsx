@@ -31,7 +31,7 @@ export default function Sidebar() {
     // Состояния для модалки конфиденциальности
     const [selectedNotMyOrder, setSelectedNotMyOrder] = useState<Order>();
     const [showConfidentialModal, setShowConfidentialModal] = useState(false);
-
+    const unclaimedRequests = useOrderStore(state => state.unclaimedRequests);
     const router = useRouter();
 
     // Данные из store
@@ -399,17 +399,32 @@ export default function Sidebar() {
                            
 
                            
-                           <button
-                                onClick={() => handleClick('claim-request')}
-                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                                    activeTab === 'claim-request'
-                                        ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-200'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                }`}
-                                title="Claim Request"
-                            > 
-                            <ClipboardClock size={16} />
-                           </button>
+                           <div className="relative">
+                               <button
+                                   onClick={() => handleClick('claim-request')}
+                                   className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                       activeTab === 'claim-request'
+                                           ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-200'
+                                           : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                   }`}
+                                   title="Claim Request"
+                               > 
+                                   <ClipboardClock size={16} />
+                               </button>
+                               {unclaimedRequests > 0 && (
+                                   <span className={`
+                                       absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold text-white pointer-events-none
+                                       ${unclaimedRequests >= 10 
+                                           ? 'bg-red-500 animate-pulse' 
+                                           : unclaimedRequests >= 5 
+                                           ? 'bg-orange-500 animate-pulse' 
+                                           : 'bg-blue-500'
+                                       }
+                                   `}>
+                                       {unclaimedRequests > 99 ? '99+' : unclaimedRequests}
+                                   </span>
+                               )}
+                            </div>
                             
                             <button
                                 onClick={() => handleClick('claimed-request')}
