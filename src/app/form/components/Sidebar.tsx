@@ -5,28 +5,23 @@ import ConnectionStatus from '@/components/ConnectionStatus'
 import { NoteOfClaimedOrder, useOrderStore } from '@/stores/orderStore'
 import Order from "@/types/formDataType"
 import {
-    Calendar,
-    Car,
     ChevronLeft,
     ChevronRight,
-    ClipboardList,
-    FileText,
-    Folder,
+    ClipboardCheck,
+    ClipboardClock,
     Lock,
     Phone,
-    Plus,
     Search,
     User
 } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import ClaimedOrderCard from './ClaimedOrderCard'
 import ConfidentialViewModal from './ConfidentialViewModal'
 
 export default function Sidebar() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<
-        'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | null
+        'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'claimed-request' | 'claim-request'|null
     >(null);
 
     // Состояния для поиска
@@ -122,10 +117,16 @@ export default function Sidebar() {
     };
 
     // Navigation handler
-    const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule') => {
+    const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'claim-request' | 'claimed-request') => {
         setActiveTab(tab);
 
         switch (tab) {
+            case 'claim-request':
+                router.push('/claim-request');
+                break;
+            case 'claimed-request':
+                router.push('/claimed-request');
+                break;
             case 'new-order':
                 router.push('/form');
                 break;
@@ -145,6 +146,9 @@ export default function Sidebar() {
                 if(!isExpanded) {
                     setIsExpanded(true);
                 }
+                break;
+            case 'claim-request':
+                router.push('/claim-request');
                 break;
         }
     };
@@ -215,32 +219,7 @@ export default function Sidebar() {
                     {isExpanded ? (
                         <div className="p-2 space-y-2 h-full flex flex-col">
                             {/* Ultra-compact Claimed Orders */}
-                            <div className="flex-shrink-0">
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <h3 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                        <span>Claimed Orders</span>
-                                        {noteOfClaimedOrder && Array.isArray(noteOfClaimedOrder) && noteOfClaimedOrder.length > 0 && (
-                                            <span className="bg-blue-100 text-blue-600 text-xs px-1.5 py-0.5 rounded-full font-medium">
-                                                {noteOfClaimedOrder.length}
-                                            </span>
-                                        )}
-                                    </h3>
-                                </div>
-                                
-                                {noteOfClaimedOrder && Array.isArray(noteOfClaimedOrder) && noteOfClaimedOrder.length > 0 ? (
-                                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                                        {noteOfClaimedOrder.map(order => (
-                                            <ClaimedOrderCard key={order.telephone} order={order} onTakeToWork={() => {handleTakeToWork(order)}} />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-1.5 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                                        <FileText size={10} className="mx-auto text-gray-300 mb-0.5" />
-                                        <div className="text-xs text-gray-500">No orders</div>
-                                    </div>
-                                )}
-                            </div>
+                         
                             
                             {/* Compact Connection Status */}
                             <div className="flex-shrink-0">
@@ -249,81 +228,35 @@ export default function Sidebar() {
 
                             {/* Ultra-compact Navigation Buttons */}
                             <div className="flex-shrink-0 space-y-1.5">
-                                <button
-                                    onClick={() => handleClick('new-order')}
-                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
-                                        activeTab === 'new-order'
-                                            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
-                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                    }`}
-                                >
-                                    <Plus size={14} />
-                                    <span>New Order</span>
-                                </button>
+                           
 
-                                <button
-                                    onClick={() => handleClick('buffer')}
-                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
-                                        activeTab === 'buffer'
-                                            ? 'bg-orange-50 text-orange-700 border border-orange-200 shadow-sm'
-                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                    }`}
-                                >
-                                    <div className="flex items-center space-x-2">
-                                        <ClipboardList size={14} />
-                                        <span>Buffer</span>
-                                    </div>
-                                    {bufferCount > 0 && (
-                                        <span className="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
-                                            {bufferCount}
-                                        </span>
-                                    )}
-                                </button>
-
-                                <button
-                                    onClick={() => handleClick('my-orders')}
-                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
-                                        activeTab === 'my-orders'
-                                            ? 'bg-green-50 text-green-700 border border-green-200 shadow-sm'
-                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                    }`}
-                                >
-                                    <Folder size={14} />
-                                    <span>My Orders</span>
-                                </button>
-                                <button
-                                    onClick={() => handleClick('visit')}
-                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
-                                        activeTab === 'visit'
-                                            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
-                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                    }`}
-                                >
-                                    <Car size={14} />
-                                    <span>Visits</span>
-                                </button>
-                                <button
-                                    onClick={() => handleClick('schedule')}
-                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
-                                        activeTab === 'schedule'
-                                            ? 'bg-red-50 text-red-700 border border-red-200 shadow-sm'
-                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                    }`}
-                                >
-                                    <Calendar size={14} />  
-                                    <span>Schedule</span>
-                                </button>
-                                <button
-                                    onClick={() => handleClick('search')}
-                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
-                                        activeTab === 'search'
-                                            ? 'bg-purple-50 text-purple-700 border border-purple-200 shadow-sm'
-                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                    }`}
-                                >
-                                    <Search size={14} />
-                                    <span>Search</span>
-                                </button>
+                             <button
+                                onClick={() => handleClick('claim-request')}
+                                className={` mt-2 w-full h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                    activeTab === 'claim-request'
+                                        ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-200'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                }`}
+                                title="Buffer"
+                            > 
+                                <ClipboardClock size={16} className="mr-2"/>
+                                <span className="text-sm font-medium whitespace-nowrap">Claim Request</span>
+                             </button>
+                             <button
+                                onClick={() => handleClick('claimed-request')}
+                                className={` mt-2 w-full h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                    activeTab === 'claimed-request'
+                                        ? 'bg-green-50 text-green-600 shadow-sm border border-green-200'
+                                        : 'text-gray-600 hover:bg-gray-50 border-gray-200 hover:border-gray-200 border border-transparent'
+                                }`}
+                                title="Buffer"
+                            > 
+                                <ClipboardCheck size={16} className="mr-2"/>
+                                <span className="text-sm font-medium whitespace-nowrap">Claimed Request</span>
+                             </button>
+                               
+                       
+                             
                             </div>
 
                             {/* Ultra-compact Search section */}
@@ -461,78 +394,33 @@ export default function Sidebar() {
                                 </div>
                             )}
 
-                            <button
-                                onClick={() => handleClick('new-order')}
+                         
+
+                           
+
+                           
+                           <button
+                                onClick={() => handleClick('claim-request')}
                                 className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                                    activeTab === 'new-order'
+                                    activeTab === 'claim-request'
                                         ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-200'
                                         : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
                                 }`}
-                                title="New Order"
-                            >
-                                <Plus size={16} />
-                            </button>
-
+                                title="Claim Request"
+                            > 
+                            <ClipboardClock size={16} />
+                           </button>
+                            
                             <button
-                                onClick={() => handleClick('buffer')}
-                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 relative ${
-                                    activeTab === 'buffer'
-                                        ? 'bg-orange-50 text-orange-600 shadow-sm border border-orange-200'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                }`}
-                                title="Buffer"
-                            >
-                                <ClipboardList size={16} />
-                                {bufferCount > 0 && (
-                                    <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                                        {bufferCount}
-                                    </span>
-                                )}
-                            </button>
-
-                            <button
-                                onClick={() => handleClick('my-orders')}
+                                onClick={() => handleClick('claimed-request')}
                                 className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                                    activeTab === 'my-orders'
+                                    activeTab === 'claimed-request'
                                         ? 'bg-green-50 text-green-600 shadow-sm border border-green-200'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                }`}
-                                title="My Orders"
-                            >
-                                <Folder size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleClick('visit')}
-                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                                    activeTab === 'visit'
-                                        ? 'bg-green-50 text-green-600 shadow-sm border border-green-200'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                }`}
-                                title="Visit"
-                            >
-                                <Car size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleClick('schedule')}
-                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                                        activeTab === 'schedule'
-                                            ? 'bg-red-50 text-red-700 border border-red-200 shadow-sm'
-                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
-                                }`}
-                                title="New Order"
-                            >
-                                <Calendar size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleClick('search')}
-                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                                    activeTab === 'search'
-                                        ? 'bg-purple-50 text-purple-600 shadow-sm border border-purple-200'
                                         : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
                                 }`}
                                 title="Search"
                             >
-                                <Search size={16} />
+                                <ClipboardCheck size={16} />
                             </button>
                         </div>
                     )}
