@@ -1,10 +1,11 @@
 // src/app/form/components/Sidebar.tsx
 'use client';
 
-import ConnectionStatus from '@/components/ConnectionStatus'
-import { NoteOfClaimedOrder, useOrderStore } from '@/stores/orderStore'
-import Order from "@/types/formDataType"
+import ConnectionStatus from '@/components/ConnectionStatus';
+import { NoteOfClaimedOrder, useOrderStore } from '@/stores/orderStore';
+import Order from "@/types/formDataType";
 import {
+    BarChart3,
     ChevronLeft,
     ChevronRight,
     ClipboardCheck,
@@ -13,15 +14,15 @@ import {
     Phone,
     Search,
     User
-} from "lucide-react"
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import ConfidentialViewModal from './ConfidentialViewModal'
+} from "lucide-react";
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import ConfidentialViewModal from './ConfidentialViewModal';
 
 export default function Sidebar() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<
-        'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'claimed-request' | 'claim-request'|null
+        'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'claimed-request' | 'claim-request' | 'manager-dashboard'|null
     >(null);
 
     // Состояния для поиска
@@ -117,7 +118,7 @@ export default function Sidebar() {
     };
 
     // Navigation handler
-    const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'claim-request' | 'claimed-request') => {
+    const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'claim-request' | 'claimed-request' | 'manager-dashboard') => {
         setActiveTab(tab);
 
         switch (tab) {
@@ -141,6 +142,9 @@ export default function Sidebar() {
                 break;
             case 'schedule':
                 router.push('/schedule');
+                break;
+            case 'manager-dashboard':
+                router.push('/manager-dashboard');
                 break;
             case 'search':
                 if(!isExpanded) {
@@ -253,6 +257,19 @@ export default function Sidebar() {
                             > 
                                 <ClipboardCheck size={16} className="mr-2"/>
                                 <span className="text-sm font-medium whitespace-nowrap">Claimed Request</span>
+                             </button>
+                             
+                             <button
+                                onClick={() => handleClick('manager-dashboard')}
+                                className={` mt-2 w-full h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                    activeTab === 'manager-dashboard'
+                                        ? 'bg-purple-50 text-purple-600 shadow-sm border border-purple-200'
+                                        : 'text-gray-600 hover:bg-gray-50 border-gray-200 hover:border-gray-200 border border-transparent'
+                                }`}
+                                title="Manager Dashboard"
+                            > 
+                                <BarChart3 size={16} className="mr-2"/>
+                                <span className="text-sm font-medium whitespace-nowrap">Manager Dashboard</span>
                              </button>
                                
                        
@@ -437,6 +454,18 @@ export default function Sidebar() {
                             >
                                 <ClipboardCheck size={16} />
                             </button>
+                            
+                            <button
+                                onClick={() => handleClick('manager-dashboard')}
+                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                    activeTab === 'manager-dashboard'
+                                        ? 'bg-purple-50 text-purple-600 shadow-sm border border-purple-200'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                }`}
+                                title="Manager Dashboard"
+                            >
+                                <BarChart3 size={16} />
+                            </button>
                         </div>
                     )}
                 </div>
@@ -452,7 +481,6 @@ export default function Sidebar() {
                     onCancel={() => {
                         handleCancelView();
                     }}
-                    orderId={selectedNotMyOrder?.order_id}
                     orderInfo={selectedNotMyOrder ? {
                         order_id: selectedNotMyOrder.order_id,
                         owner: selectedNotMyOrder.owner,

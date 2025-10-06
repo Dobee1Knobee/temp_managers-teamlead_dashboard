@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef } from "react";
 import { useOrderStore } from "@/stores/orderStore";
+import { useEffect, useRef } from "react";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentUser        = useOrderStore(s => s.currentUser);
@@ -30,11 +30,27 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         connectSocket(); // idempotent: внутри должен проверять, что сокет ещё не подключён
     }, [currentUser?.team, currentUser?.userName, isSocketConnected, connectSocket]);
 
-    // 3) Если вкладка вернулась на передний план — убедимся, что соединение живо
+    // 3) Если вкладка вернулась на передний план — проверяем соединение более умно
     useEffect(() => {
         const onVisible = () => {
-            if (document.visibilityState === "visible" && currentUser && !isSocketConnected) {
-                connectSocket();
+            if (document.visibilityState === "visible" && currentUser) {
+                // Проверяем реальное состояние сокета, а не только флаг isSocketConnected
+                const socket = (window as any).__socketInstance;
+                const isReallyConnected = socket?.connected;
+                
+                console.log('👁️ Вкладка стала видимой, состояние сокета:', {
+                    isSocketConnected,
+                    isReallyConnected,
+                    readyState: socket?.io?.engine?.readyState
+                });
+                
+                // Подключаем только если сокета нет или он точно отключен
+                if (!socket || (!isReallyConnected && socket.io?.engine?.readyState === 'closed')) {
+                    console.log('🔄 Переподключаем сокет после возврата вкладки');
+                    connectSocket();
+                } else {
+                    console.log('♻️ Сокет уже активен, переподключение не нужно');
+                }
             }
         };
         document.addEventListener("visibilitychange", onVisible);

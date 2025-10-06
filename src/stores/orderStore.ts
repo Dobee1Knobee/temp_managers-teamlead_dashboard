@@ -529,14 +529,40 @@ export const useOrderStore = create<OrderState>()(
                     return;
                 }
 
-                if (existingSocket?.connected) {
-                    console.log('⚡ WebSocket уже подключен');
-                    return;
+                // Проверяем состояние существующего сокета
+                if (existingSocket) {
+                    const readyState = existingSocket?.io?.engine?.readyState;
+                    const isConnected = existingSocket.connected;
+                    
+                    console.log('🔍 Состояние существующего сокета:', {
+                        readyState,
+                        connected: isConnected,
+                        disconnected: existingSocket.disconnected
+                    });
+
+                    // Если сокет подключен или в процессе подключения - переиспользуем
+                    if (isConnected || readyState === 'opening') {
+                        console.log('♻️ Переиспользуем существующий сокет без разрыва');
+                        set({ 
+                            socket: existingSocket, 
+                            isSocketConnected: isConnected 
+                        });
+                        (window as any).__activeSocketConnection = true;
+                        return;
+                    }
+
+                    // Если сокет закрыт, но не полностью - даем ему время на автореконнект
+                    if (readyState === 'closing' || readyState === 'closed') {
+                        console.log('⏳ Сокет в процессе закрытия/закрыт, но может переподключиться автоматически');
+                        // Не создаем новый сокет, даем Socket.IO самому переподключиться
+                        (window as any).__activeSocketConnection = true;
+                        return;
+                    }
                 }
 
                 // Устанавливаем глобальный флаг
                 (window as any).__activeSocketConnection = true;
-                console.log(' Устанавливаем глобальную блокировку WebSocket');
+                console.log('🔌 Создаем новое WebSocket соединение');
 
                 // Проверяем доступность сервера перед подключением
                 try {
@@ -558,11 +584,6 @@ export const useOrderStore = create<OrderState>()(
                     return;
                 }
 
-                // Закрываем предыдущее соединение если есть
-                if (existingSocket) {
-                    existingSocket.disconnect();
-                }
-
                 console.log(`🔌 Подключаемся как ${currentUser.userName} к команде ${currentUser.team}`);
 
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -581,105 +602,116 @@ export const useOrderStore = create<OrderState>()(
                     upgrade: true,
                     rememberUpgrade: true,
                     autoConnect: true,
+                    auth: {
+                        at: currentUser.userAt.replace(/^@/, '') // Убираем @ если есть
+                    },
                     query: {
                         client: 'web',
                         version: '1.0.0'
                     }
                 });
 
-                // Обработчики событий
-                socket.on('connect', () => {
-                    console.log('✅ WebSocket подключен!', socket.id);
-                    console.log(' Connection details:', {
-                        url: SOCKET_URL,
-                        transport: socket.io.engine.transport.name,
-                        readyState: socket.readyState,
-                        connected: socket.connected,
-                        disconnected: socket.disconnected
+                // Обработчики событий - навешиваем только один раз
+                if (!(socket as any).__handlersBound) {
+                    (socket as any).__handlersBound = true;
+                    console.log('🔗 Навешиваем обработчики событий на новый сокет');
+
+                    socket.on('connect', () => {
+                        console.log('✅ WebSocket подключен!', socket.id);
+                        console.log(' Connection details:', {
+                            url: SOCKET_URL,
+                            transport: socket.io.engine.transport.name,
+                            readyState: socket.readyState,
+                            connected: socket.connected,
+                            disconnected: socket.disconnected
+                        });
+                        console.log('👤 Current user data:', {
+                            userId: currentUser.userId,
+                            userName: currentUser.userName,
+                            userAt: currentUser.userAt,
+                            team: currentUser.team,
+                            manager_id: currentUser.manager_id
+                        });
+                        set({ isSocketConnected: true });
+
+                        // Регистрируемся в команде и запрашиваем заказы
+                        socket.emit('order-for-team-claim', {
+                            at: currentUser.userAt
+                        });
+                        socket.emit('join-team', {
+                            team: currentUser.team,
+                            username: currentUser.userName,
+                            at: currentUser.userAt
+                        });
+
+                        // Регистрируем менеджера для таргетных уведомлений
+                        console.log(' Регистрируем менеджера для таргетных уведомлений:', {
+                            manager_id: currentUser.manager_id,
+                            at: currentUser.userAt,
+                            user_id: currentUser.userId,
+                            socket_id: socket.id
+                        });
+                        socket.emit('register-manager', {
+                            manager_id: currentUser.manager_id,
+                            at: currentUser.userAt,
+                            user_id: currentUser.userId,
+                            socket_id: socket.id
+                        });
+
+                        // Запрашиваем разрешение на системные уведомления (один раз)
+                        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                            try { Notification.requestPermission(); } catch {}
+                        }
                     });
-                    console.log('👤 Current user data:', {
-                        userId: currentUser.userId,
-                        userName: currentUser.userName,
-                        userAt: currentUser.userAt,
-                        team: currentUser.team,
-                        manager_id: currentUser.manager_id
-                    });
-                    set({ isSocketConnected: true });
 
-                    socket.emit('join-team', {
-                        team: currentUser.team,
-                        username: currentUser.userName,
-                        at: currentUser.userAt
-                    });
-
-                    // Регистрируем менеджера для таргетных уведомлений
-                    console.log(' Регистрируем менеджера для таргетных уведомлений:', {
-                        manager_id: currentUser.manager_id,
-                        at: currentUser.userAt,
-                        user_id: currentUser.userId,
-                        socket_id: socket.id
-                    });
-                    socket.emit('register-manager', {
-                        manager_id: currentUser.manager_id,
-                        at: currentUser.userAt,
-                        user_id: currentUser.userId,
-                        socket_id: socket.id
+                    // Добавляем обработчик connect_error
+                    socket.on('connect_error', (error: any) => {
+                        console.error('❌ Ошибка подключения WebSocket:', {
+                            message: error.message,
+                            description: error.description,
+                            context: error.context,
+                            type: error.type,
+                            url: SOCKET_URL
+                        });
+                        
+                        // Показываем пользователю информацию об ошибке
+                        toast.error(`Ошибка подключения: ${error.message || 'Не удалось подключиться к серверу'}`);
+                        
+                        set({ isSocketConnected: false });
+                        (window as any).__activeSocketConnection = false; // Сбрасываем флаг
                     });
 
-                    // Запрашиваем разрешение на системные уведомления (один раз)
-                    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-                        try { Notification.requestPermission(); } catch {}
-                    }
-                });
-
-                // Добавляем обработчик connect_error
-                socket.on('connect_error', (error: any) => {
-                    console.error('❌ Ошибка подключения WebSocket:', {
-                        message: error.message,
-                        description: error.description,
-                        context: error.context,
-                        type: error.type,
-                        url: SOCKET_URL
+                    // Добавляем обработчик reconnect
+                    socket.on('reconnect', (attemptNumber: number) => {
+                        console.log(`🔄 WebSocket переподключен после ${attemptNumber} попыток`);
+                        toast.success('Соединение восстановлено');
+                        set({ isSocketConnected: true });
                     });
-                    
-                    // Показываем пользователю информацию об ошибке
-                    toast.error(`Ошибка подключения: ${error.message || 'Не удалось подключиться к серверу'}`);
-                    
-                    set({ isSocketConnected: false });
-                    (window as any).__activeSocketConnection = false; // Сбрасываем флаг
-                });
 
-                // Добавляем обработчик reconnect
-                socket.on('reconnect', (attemptNumber: number) => {
-                    console.log(`🔄 WebSocket переподключен после ${attemptNumber} попыток`);
-                    toast.success('Соединение восстановлено');
-                    set({ isSocketConnected: true });
-                });
+                    // Добавляем обработчик reconnect_attempt
+                    socket.on('reconnect_attempt', (attemptNumber: number) => {
+                        console.log(` Попытка переподключения #${attemptNumber}`);
+                    });
 
-                // Добавляем обработчик reconnect_attempt
-                socket.on('reconnect_attempt', (attemptNumber: number) => {
-                    console.log(` Попытка переподключения #${attemptNumber}`);
-                });
+                    // Добавляем обработчик reconnect_error
+                    socket.on('reconnect_error', (error: any) => {
+                        console.error('❌ Ошибка переподключения:', error);
+                    });
 
-                // Добавляем обработчик reconnect_error
-                socket.on('reconnect_error', (error: any) => {
-                    console.error('❌ Ошибка переподключения:', error);
-                });
+                    // Добавляем обработчик reconnect_failed
+                    socket.on('reconnect_failed', () => {
+                        console.error('❌ Не удалось переподключиться после всех попыток');
+                        toast.error('Не удалось восстановить соединение. Проверьте интернет и попробуйте обновить страницу.');
+                        set({ isSocketConnected: false });
+                        (window as any).__activeSocketConnection = false; // Сбрасываем флаг
+                    });
 
-                // Добавляем обработчик reconnect_failed
-                socket.on('reconnect_failed', () => {
-                    console.error('❌ Не удалось переподключиться после всех попыток');
-                    toast.error('Не удалось восстановить соединение. Проверьте интернет и попробуйте обновить страницу.');
-                    set({ isSocketConnected: false });
-                    (window as any).__activeSocketConnection = false; // Сбрасываем флаг
-                });
+                    socket.on('team-joined', (data: any) => {
+                        console.log('🎉 Присоединились к команде:', data);
+                    });
 
-                socket.on('team-joined', (data: any) => {
-                    console.log('🎉 Присоединились к команде:', data);
-                });
-
-                // 🎯 Таргетные уведомления для конкретного менеджера
-                socket.on('target-notification', async(data: any) => {
+                    // 🎯 Таргетные уведомления для конкретного менеджера
+                    socket.on('target-notification', async(data: any) => {
                     try {
                         const notification = {
                             id: Date.now(),
@@ -723,11 +755,11 @@ export const useOrderStore = create<OrderState>()(
                     }
                 });
 
-                // Добавляем переменную для отслеживания последнего события
-                let lastOrderEvent: string | null = null;
-                let orderEventTimeout: NodeJS.Timeout | null = null;
+                    // Добавляем переменную для отслеживания последнего события
+                    let lastOrderEvent: string | null = null;
+                    let orderEventTimeout: NodeJS.Timeout | null = null;
 
-                socket.on('new-order-in-buffer', (data: any) => {
+                    socket.on('new-order-in-buffer', (data: any) => {
                     // Логируем ВСЕ входящие события
                     console.log('🔍 ВХОДЯЩЕЕ СОБЫТИЕ new-order-in-buffer:', {
                         order_id: data.order_id,
@@ -800,66 +832,70 @@ export const useOrderStore = create<OrderState>()(
                     }, 500);
                 });
 
-                socket.on('error', (error: any) => {
-                    console.error('WebSocket ошибка:', error);
-                });
+                    socket.on('error', (error: any) => {
+                        console.error('WebSocket ошибка:', error);
+                    });
 
-                // 🔄 Добавляем heartbeat для поддержания соединения
-           // 🔄 Улучшенный heartbeat для поддержания соединения
-            const heartbeatInterval = setInterval(() => {
-                if (socket.connected) {
-                    socket.emit('keep-alive');
-                    console.log(' Keep-alive sent to server');
-                } else {
-                    console.log('⚠ Socket не подключен, пропускаем heartbeat');
-                }
-          }, 120000); 
-                // Обработчик keep-alive-ack от сервера
-                            socket.on('keep-alive-ack', () => {
-                                console.log('💓 Keep-alive acknowledged by server');
-                            });
-            // Увеличиваем таймаут для heartbeat
-            const heartbeatTimeout = setTimeout(() => {
-                if (socket.connected) {
-                    console.log('⚠ Keep-alive timeout, проверяем соединение');
-                    socket.emit('ping');
-                }
-            }, 30000); // Увеличиваем с 10 до 30 секунд
+                    // 🔄 Добавляем heartbeat для поддержания соединения
+                    const heartbeatInterval = setInterval(() => {
+                        if (socket.connected) {
+                            socket.emit('keep-alive');
+                            console.log(' Keep-alive sent to server');
+                        } else {
+                            console.log('⚠ Socket не подключен, пропускаем heartbeat');
+                        }
+                    }, 120000); 
+                    
+                    // Обработчик keep-alive-ack от сервера
+                    socket.on('keep-alive-ack', () => {
+                        console.log('💓 Keep-alive acknowledged by server');
+                    });
+                    
+                    // Увеличиваем таймаут для heartbeat
+                    const heartbeatTimeout = setTimeout(() => {
+                        if (socket.connected) {
+                            console.log('⚠ Keep-alive timeout, проверяем соединение');
+                            socket.emit('ping');
+                        }
+                    }, 30000); // Увеличиваем с 10 до 30 секунд
 
-         
+                    // Обработчик pong от сервера
+                    socket.on('pong', () => {
+                        console.log(' Pong received from server');
+                        clearTimeout(heartbeatTimeout);
+                    });
 
-                // Добавляем обработчик keep-alive timeout
-             
+                    socket.on('disconnect', (reason: string) => {
+                        clearInterval(heartbeatInterval);
+                        clearTimeout(heartbeatTimeout);
+                        console.log('⚠ WebSocket отключен, причина:', reason);
+                        set({ isSocketConnected: false });
+                        (window as any).__activeSocketConnection = false; // Сбрасываем флаг
+                        
+                        // Более информативные сообщения
+                        if (reason === 'io server disconnect') {
+                            toast.error('Сервер разорвал соединение');
+                        } else if (reason === 'io client disconnect') {
+                            console.log('Клиент разорвал соединение');
+                        } else if (reason === 'transport close') {
+                            toast.error('Соединение потеряно. Попытка переподключения...');
+                        } else if (reason === 'ping timeout') {
+                            toast.error('Таймаут соединения. Попытка переподключения...');
+                        } else if (reason === 'server namespace disconnect') {
+                            toast.error('Соединение заменено новым');
+                        }
+                    });
 
-                // Обработчик pong от сервера
-                socket.on('pong', () => {
-                    console.log(' Pong received from server');
-                    clearTimeout(heartbeatTimeout);
-                });
+                    // Добавляем обработчик для order-for-team-claim
+                    socket.on('order-for-team-claim', (orderData: any) => {
+                        console.log('🔍 order-for-team-claim:', orderData);
+                        toast.success('🔍 Заказ для заклеймления: ' + orderData.orderData.order_id);
+                    });
+                } // Конец блока __handlersBound
 
-                        socket.on('disconnect', (reason: string) => {
-                clearInterval(heartbeatInterval);
-                clearTimeout(heartbeatTimeout);
-                console.log('⚠ WebSocket отключен, причина:', reason);
-                set({ isSocketConnected: false });
-                (window as any).__activeSocketConnection = false; // Сбрасываем флаг
-                
-                // Более информативные сообщения
-                if (reason === 'io server disconnect') {
-                    toast.error('Сервер разорвал соединение');
-                } else if (reason === 'io client disconnect') {
-                    console.log('Клиент разорвал соединение');
-                } else if (reason === 'transport close') {
-                    toast.error('Соединение потеряно. Попытка переподключения...');
-                } else if (reason === 'ping timeout') {
-                    toast.error('Таймаут соединения. Попытка переподключения...');
-                } else if (reason === 'server namespace disconnect') {
-                    toast.error('Соединение заменено новым');
-                }
-            });
-
-                // Сохраняем socket в store
+                // Сохраняем socket в store и глобально для доступа из других компонентов
                 set({ socket });
+                (window as any).__socketInstance = socket;
             },
 
             disconnectSocket: () => {
