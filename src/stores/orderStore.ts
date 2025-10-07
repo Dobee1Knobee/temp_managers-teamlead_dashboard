@@ -194,10 +194,22 @@ interface BufferState {
 }
 
 // ===== ИНТЕРФЕЙС STORE =====
+// Тип для незаклейменных заявок
+export interface OrderForClaim {
+    client_id: string;
+    orderData: { 
+        order_id: number;
+        clientName: string;
+        text: string;
+        team: string;
+        date: string;
+    }
+}
+
 export interface OrderState extends BufferState {
     // ===== ДАННЫЕ =====
     currentOrder: Order | null;
-    unclaimedRequests: number;
+    unclaimedRequests: OrderForClaim[];
     formData: FormData;
     selectedServices: ServiceItem[];
     orders: Order[];
@@ -341,8 +353,9 @@ export interface OrderState extends BufferState {
     hasPrevPage: () => boolean;
 
     // ===== ЗАКЛЕЙМЕННЫЕ ЗАКАЗЫ =====
-    getUnclaimedRequests: () => Promise<number>;
-    setUnclaimedRequests: (count: number) => void;
+    getUnclaimedRequests: () => Promise<OrderForClaim[]>;
+    setUnclaimedRequests: (requests: OrderForClaim[]) => void;
+    loadUnclaimedRequests: (team: string) => Promise<void>;
     // ===== УТИЛИТЫ =====
     setCurrentUser: (user: { userId: string; userName: string; userAt: string; team: string; manager_id: string,shift: boolean }) => void;
     setLoading: (loading: boolean) => void;
@@ -417,7 +430,7 @@ export const useOrderStore = create<OrderState>()(
             orders: [],
             teamBufferOrders: [],
             telegramOrders: [],
-            unclaimedRequests: 0,
+            unclaimedRequests: [],
             myOrders: [],
             currentTelegramOrder: null,
             isWorkingOnTelegramOrder: false,
@@ -495,16 +508,33 @@ export const useOrderStore = create<OrderState>()(
                 const { currentUser } = get();
                 if (!currentUser) {
                     set({ bufferError: 'Пользователь не авторизован' });
-                    return 0;
+                    return [];
                 }
-                const response = await fetch(`https://bot-crm-backend-756832582185.us-central1.run.app/api/get-unclaimed-requests/${currentUser.userAt}`);
+                const response = await fetch(`https://bot-crm-backend-756832582185.us-central1.run.app/api/current-available-claims/${currentUser.team}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                });
                 const data = await response.json();
-                set({ unclaimedRequests: data.unclaimedRequests });
-                return data.unclaimedRequests;
+                set({ unclaimedRequests: data });
+                return data;
             },
 
-            setUnclaimedRequests: (count: number) => {
-                set({ unclaimedRequests: count });
+            loadUnclaimedRequests: async (team: string) => {
+                try {
+                    const response = await fetch(`https://bot-crm-backend-756832582185.us-central1.run.app/api/current-available-claims/${team}`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                    const data = await response.json();
+                    set({ unclaimedRequests: data });
+                } catch (error) {
+                    console.error('Ошибка загрузки незаклейменных заявок:', error);
+                    set({ bufferError: 'Ошибка загрузки незаклейменных заявок' });
+                }
+            },
+
+            setUnclaimedRequests: (requests: OrderForClaim[]) => {
+                set({ unclaimedRequests: requests });
             },
 
 
@@ -518,6 +548,9 @@ export const useOrderStore = create<OrderState>()(
                     console.log('⚠ Глобально блокируем создание нового WebSocket соединения');
                     return;
                 }
+
+                // Устанавливаем блокировку сразу
+                (window as any).__activeSocketConnection = true;
 
                 if (get().isSocketConnected) {
                     console.log('⚠ Уже подключен или идет подключение');
@@ -560,8 +593,6 @@ export const useOrderStore = create<OrderState>()(
                     }
                 }
 
-                // Устанавливаем глобальный флаг
-                (window as any).__activeSocketConnection = true;
                 console.log('🔌 Создаем новое WebSocket соединение');
 
                 // Проверяем доступность сервера перед подключением
@@ -585,11 +616,17 @@ export const useOrderStore = create<OrderState>()(
                 }
 
                 console.log(`🔌 Подключаемся как ${currentUser.userName} к команде ${currentUser.team}`);
+                console.log('🔑 Auth token:', {
+                    original: currentUser.userAt,
+                    cleaned: currentUser.userAt.replace(/^@/, ''),
+                    hasAt: currentUser.userAt.startsWith('@')
+                });
 
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const io = require('socket.io-client');
                 console.log('🔗 SOCKET_URL =', SOCKET_URL);
 
+                const authToken = currentUser.userAt.replace(/^@/, '');
                 const socket = io(SOCKET_URL, {
                     transports: ['websocket', 'polling'],
                     path: '/socket.io',
@@ -603,11 +640,12 @@ export const useOrderStore = create<OrderState>()(
                     rememberUpgrade: true,
                     autoConnect: true,
                     auth: {
-                        at: currentUser.userAt.replace(/^@/, '') // Убираем @ если есть
+                        at: authToken
                     },
                     query: {
                         client: 'web',
-                        version: '1.0.0'
+                        version: '1.0.0',
+                        at: authToken // Дублируем в query как fallback
                     }
                 });
 
@@ -889,7 +927,16 @@ export const useOrderStore = create<OrderState>()(
                     // Добавляем обработчик для order-for-team-claim
                     socket.on('order-for-team-claim', (orderData: any) => {
                         console.log('🔍 order-for-team-claim:', orderData);
-                        toast.success('🔍 Заказ для заклеймления: ' + orderData.orderData.order_id);
+                        try {
+                            const orderId = orderData?.orderData?.order_id ?? orderData?.order_id;
+                            if (orderId) {
+                                toast.success(`🔍 Order for claim in team buffer: ${orderId}`);
+                            }
+                        } catch (_) {
+                            // no-op: защищаемся от неожиданных форматов
+                        }
+                        // Обновляем массив незаклейменных заявок при поступлении события
+                        get().loadUnclaimedRequests(currentUser.team);
                     });
                 } // Конец блока __handlersBound
 

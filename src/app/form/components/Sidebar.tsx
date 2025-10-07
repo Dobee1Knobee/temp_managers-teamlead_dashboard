@@ -1,23 +1,23 @@
 // src/app/form/components/Sidebar.tsx
 'use client';
 
-import ConnectionStatus from '@/components/ConnectionStatus';
-import { NoteOfClaimedOrder, useOrderStore } from '@/stores/orderStore';
-import Order from "@/types/formDataType";
+import ConnectionStatus from '@/components/ConnectionStatus'
+import { NoteOfClaimedOrder, useOrderStore } from '@/stores/orderStore'
+import Order from "@/types/formDataType"
 import {
-    BarChart3,
-    ChevronLeft,
-    ChevronRight,
-    ClipboardCheck,
-    ClipboardClock,
-    Lock,
-    Phone,
-    Search,
-    User
-} from "lucide-react";
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import ConfidentialViewModal from './ConfidentialViewModal';
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  ClipboardClock,
+  Lock,
+  Phone,
+  Search,
+  User
+} from "lucide-react"
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import ConfidentialViewModal from './ConfidentialViewModal'
 
 export default function Sidebar() {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -33,6 +33,7 @@ export default function Sidebar() {
     const [selectedNotMyOrder, setSelectedNotMyOrder] = useState<Order>();
     const [showConfidentialModal, setShowConfidentialModal] = useState(false);
     const unclaimedRequests = useOrderStore(state => state.unclaimedRequests);
+    const unclaimedCount = Array.isArray(unclaimedRequests) ? unclaimedRequests.length : 0;
     const router = useRouter();
 
     // Данные из store
@@ -428,17 +429,17 @@ export default function Sidebar() {
                                > 
                                    <ClipboardClock size={16} />
                                </button>
-                               {unclaimedRequests > 0 && (
+                               {unclaimedCount > 0 && (
                                    <span className={`
                                        absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold text-white pointer-events-none
-                                       ${unclaimedRequests >= 10 
+                                       ${unclaimedCount >= 10 
                                            ? 'bg-red-500 animate-pulse' 
-                                           : unclaimedRequests >= 5 
+                                           : unclaimedCount >= 5 
                                            ? 'bg-orange-500 animate-pulse' 
                                            : 'bg-blue-500'
                                        }
                                    `}>
-                                       {unclaimedRequests > 99 ? '99+' : unclaimedRequests}
+                                       {unclaimedCount > 99 ? '99+' : unclaimedCount}
                                    </span>
                                )}
                             </div>

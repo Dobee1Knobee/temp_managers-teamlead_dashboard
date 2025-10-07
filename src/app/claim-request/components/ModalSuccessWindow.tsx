@@ -6,6 +6,8 @@ interface ModalSuccessWindowProps {
     onClose: () => void
     title?: string
     message?: string
+    id?: string
+    requestText?: string
     buttonText?: string
 }
 
@@ -14,9 +16,10 @@ export default function ModalSuccessWindow({
     onClose,
     title = "Успешно!",
     message = "Операция выполнена успешно",
+    id,
+    requestText,
     buttonText = "Понятно"
 }: ModalSuccessWindowProps) {
-    
     // Закрытие по Escape клавише
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -71,8 +74,19 @@ export default function ModalSuccessWindow({
                 </div>
 
                 {/* Контент */}
-                <div className="p-6 text-center">
-                    <p className="text-gray-600 mb-6">{message}</p>
+                <div className="p-6">
+                    <p className="text-gray-600 mb-6 text-center">{message}</p>
+                    
+                    {requestText && (
+                        <div className="mb-6">
+                            <h3 className="text-sm font-semibold text-gray-800 mb-3">Детали заявки:</h3>
+                            <div className="bg-gray-50 rounded-lg p-3 max-h-60 overflow-y-auto">
+                                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono" style={{ marginTop: '-1rem' }}>
+                                    {requestText}
+                                </pre>
+                            </div>
+                        </div>
+                    )}
                     
                     <button
                         onClick={onClose}
