@@ -1,11 +1,12 @@
 "use client";
-import { useOrderStore } from "@/stores/orderStore";
-import { useEffect, useRef } from "react";
+import { useOrderStore } from "@/stores/orderStore"
+import { useEffect, useRef } from "react"
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentUser        = useOrderStore(s => s.currentUser);
     const isSocketConnected  = useOrderStore(s => s.isSocketConnected);
     const connectSocket      = useOrderStore(s => s.connectSocket);
+    const autoReconnect      = useOrderStore(s => s.autoReconnect);
     const initFromStorage    = useOrderStore(s => s.initFromStorage);
 
     // 1) На первом маунте подтянуть пользователя из sessionStorage (если его ещё нет)
@@ -44,10 +45,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
                     readyState: socket?.io?.engine?.readyState
                 });
                 
-                // Подключаем только если сокета нет или он точно отключен
-                if (!socket || (!isReallyConnected && socket.io?.engine?.readyState === 'closed')) {
+                // Используем autoReconnect для умного переподключения
+                if (!socket || !isReallyConnected) {
                     console.log('🔄 Переподключаем сокет после возврата вкладки');
-                    connectSocket();
+                    autoReconnect();
                 } else {
                     console.log('♻️ Сокет уже активен, переподключение не нужно');
                 }
@@ -55,7 +56,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         };
         document.addEventListener("visibilitychange", onVisible);
         return () => document.removeEventListener("visibilitychange", onVisible);
-    }, [currentUser, isSocketConnected, connectSocket]);
+    }, [currentUser, isSocketConnected, autoReconnect]);
 
     return <>{children}</>;
 }

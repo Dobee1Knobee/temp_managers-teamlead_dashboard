@@ -1,8 +1,10 @@
 import { useOrderStore } from "@/stores/orderStore"
 import { OrderStatus } from "@/types/api"
-import { Folder, RefreshCw, Search, X } from "lucide-react"
+import { ClipboardCheck, ClipboardClock, Folder, RefreshCw, Search, X } from "lucide-react"
 import React, { useEffect, useState } from 'react'
-import OrderCard from './OrderCard'
+import AvailableOrdersTab from './AvailableOrdersTab'
+import ClaimedOrdersTab from './ClaimedOrdersTab'
+import MyOrdersTab from './MyOrdersTab'
 
 export default function OrdersDemo() {
     const {
@@ -28,17 +30,24 @@ export default function OrdersDemo() {
         searchOrders,
         searchResults,
         isSearching,
-        currentUser
+        currentUser,
+        // Unclaimed orders
+        loadUnclaimedRequests
     } = useOrderStore();
 
     // Local states for filters
     const [statusFilter, setStatusFilter] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchMode, setIsSearchMode] = useState(false);
+    const [activeTab, setActiveTab] = useState('my-orders');
 
     useEffect(() => {
         fetchOrders();
-    }, []);
+        // Load unclaimed orders when component mounts
+        if (currentUser?.team) {
+            loadUnclaimedRequests(currentUser.team);
+        }
+    }, [currentUser?.team]);
 
     const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
         console.log(`Changing status of order ${orderId} to ${newStatus}`);
@@ -136,17 +145,63 @@ export default function OrdersDemo() {
     
     const displayOrders = isSearchMode ? searchResults?.myOrders || [] : filteredOrders;
     const displayCount = isSearchMode ? searchResults?.counts?.my || 0 : (statusFilter ? filteredOrders.length : totalOrders);
-
+    
+    // Handle tab switching
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+        // Reset search and filters when switching tabs
+        setIsSearchMode(false);
+        setSearchQuery('');
+        setStatusFilter('');
+    };
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <div className="mb-6">
+        <div className="p-2 bg-gray-50 min-h-screen">
+            <div className="mb-6 flex flex-row items-center justify-between">
                 <div className="flex flex-row items-center gap-2">
-                    <Folder size={24} className="text-gray-800" />
+                    <div className="flex flex-row items-center gap-2 border border-gray-300 rounded-lg p-2">
+                        <button
+                            onClick={() => handleTabChange('my-orders')}
+                            className={`flex flex-row items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                                activeTab === 'my-orders'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white text-gray-800 hover:bg-gray-100'
+                            }`}
+                        >
+                            <Folder size={24} />
+                            <span className="text-lg font-bold">My orders</span>
+                        </button>
+                        <button
+                            onClick={() => handleTabChange('claimed')}
+                            className={`flex flex-row items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                                activeTab === 'claimed'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white text-gray-800 hover:bg-gray-100'
+                            }`}
+                        >
+                            <ClipboardCheck size={24} />
+                            <span className="text-lg font-bold">Claimed</span>
+                        </button>
+                        <button
+                            onClick={() => handleTabChange('available-to-claim')}
+                            className={`flex flex-row items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                                activeTab === 'available-to-claim'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white text-gray-800 hover:bg-gray-100'
+                            }`}
+                        >
+                            <ClipboardClock size={24} />
+                            <span className="text-lg font-bold">Available to claim</span>
+                        </button>
+                    </div>
+                    {isSearchMode && (
+                      <div>
                     <h1 className="text-2xl font-bold text-gray-800">
-                        {isSearchMode ? 'Результаты поиска' : 'Мои заказы'}
+                        'Результаты поиска' 
                     </h1>
+                      </div>
+                    )}
                 </div>
-                <div className="text-gray-600">
+                <div className="text-gray-600 p-2">
                     {isSearchMode ? (
                         <>
                             Found {displayCount} your orders
@@ -177,137 +232,139 @@ export default function OrdersDemo() {
                 </div>
             </div>
 
-            {/* Search and Filters */}
-            <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-4 flex-wrap">
-                        {/* Search Input */}
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by ID, phone, address, or ZIP..."
-                                    className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm w-96"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                />
-                                {searchQuery && (
+            {/* Search and Filters - Only for My Orders tab */}
+            {activeTab === 'my-orders' && (
+                <div className="bg-white p-3 rounded-lg shadow-sm mb-6 " style={{marginTop:"-1rem"}}>
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            {/* Search Input */}
+                            <div className="flex items-center gap-2">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by ID, phone, address, or ZIP..."
+                                        className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm w-96"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={handleSearch}
+                                    disabled={!searchQuery.trim() || isSearching}
+                                    className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                    {isSearching ? (
+                                        <>
+                                            <RefreshCw size={16} className="animate-spin" />
+                                            Searching...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Search size={16} />
+                                            Search
+                                        </>
+                                    )}
+                                </button>
+                                {isSearchMode && (
                                     <button
-                                        onClick={() => setSearchQuery('')}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        onClick={handleClearSearch}
+                                        className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors duration-200 flex items-center gap-2"
+                                    >
+                                        <X size={16} />
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Status Filter */}
+                            <div className="flex items-center gap-2">
+                                <select
+                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                    value={statusFilter}
+                                    onChange={(e) => handleStatusFilterChange(e.target.value)}
+                                >
+                                    <option value="">Все статусы</option>
+                                    <option value={OrderStatus.IN_WORK}>{OrderStatus.IN_WORK}</option>
+                                    <option value={OrderStatus.COMPLETED}>{OrderStatus.COMPLETED}</option>
+                                    <option value={OrderStatus.CANCELLED}>{OrderStatus.CANCELLED}</option>
+                                    <option value={OrderStatus.INVALID}>{OrderStatus.INVALID}</option>
+                                    <option value={OrderStatus.OTHER_REGION}>{OrderStatus.OTHER_REGION}</option>
+                                    <option value={OrderStatus.NO_ANSWER}>{OrderStatus.NO_ANSWER}</option>
+                                    <option value={OrderStatus.NIGHT}>{OrderStatus.NIGHT}</option>
+                                    <option value={OrderStatus.NIGHT_EARLY}>{OrderStatus.NIGHT_EARLY}</option>
+                                    <option value={OrderStatus.NEED_CONFIRMATION}>{OrderStatus.NEED_CONFIRMATION}</option>
+                                    <option value={OrderStatus.NEED_APPROVAL}>{OrderStatus.NEED_APPROVAL}</option>
+                                    <option value={OrderStatus.CALL_TOMORROW}>{OrderStatus.CALL_TOMORROW}</option>
+                                    <option value={OrderStatus.ORDER_STATUS}>{OrderStatus.ORDER_STATUS}</option>
+                                </select>
+                                {statusFilter && (
+                                    <button
+                                        onClick={() => handleStatusFilterChange('')}
+                                        className="px-2 py-2 text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                                        title="Сбросить фильтр статуса"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>
                                 )}
                             </div>
-                            <button
-                                onClick={handleSearch}
-                                disabled={!searchQuery.trim() || isSearching}
-                                className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {isSearching ? (
-                                    <>
-                                        <RefreshCw size={16} className="animate-spin" />
-                                        Searching...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Search size={16} />
-                                        Search
-                                    </>
-                                )}
-                            </button>
-                            {isSearchMode && (
-                                <button
-                                    onClick={handleClearSearch}
-                                    className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors duration-200 flex items-center gap-2"
+
+                            {/* Per Page Selector */}
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm text-gray-700">На странице:</label>
+                                <select
+                                    value={ordersPerPage}
+                                    onChange={(e) => {
+                                        const newLimit = Number(e.target.value);
+                                        if (statusFilter) {
+                                            fetchOrders({ page: 1, limit: newLimit }, { text_status: statusFilter });
+                                        } else {
+                                            changePageSize(newLimit);
+                                        }
+                                    }}
+                                    disabled={isLoading}
+                                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 >
-                                    <X size={16} />
-                                    Clear
-                                </button>
-                            )}
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                </select>
+                            </div>
                         </div>
 
-                        {/* Status Filter */}
-                        <div className="flex items-center gap-2">
-                            <select
-                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                value={statusFilter}
-                                onChange={(e) => handleStatusFilterChange(e.target.value)}
-                            >
-                                <option value="">Все статусы</option>
-                                <option value={OrderStatus.IN_WORK}>{OrderStatus.IN_WORK}</option>
-                                <option value={OrderStatus.COMPLETED}>{OrderStatus.COMPLETED}</option>
-                                <option value={OrderStatus.CANCELLED}>{OrderStatus.CANCELLED}</option>
-                                <option value={OrderStatus.INVALID}>{OrderStatus.INVALID}</option>
-                                <option value={OrderStatus.OTHER_REGION}>{OrderStatus.OTHER_REGION}</option>
-                                <option value={OrderStatus.NO_ANSWER}>{OrderStatus.NO_ANSWER}</option>
-                                <option value={OrderStatus.NIGHT}>{OrderStatus.NIGHT}</option>
-                                <option value={OrderStatus.NIGHT_EARLY}>{OrderStatus.NIGHT_EARLY}</option>
-                                <option value={OrderStatus.NEED_CONFIRMATION}>{OrderStatus.NEED_CONFIRMATION}</option>
-                                <option value={OrderStatus.NEED_APPROVAL}>{OrderStatus.NEED_APPROVAL}</option>
-                                <option value={OrderStatus.CALL_TOMORROW}>{OrderStatus.CALL_TOMORROW}</option>
-                                <option value={OrderStatus.ORDER_STATUS}>{OrderStatus.ORDER_STATUS}</option>
-                            </select>
-                            {statusFilter && (
-                                <button
-                                    onClick={() => handleStatusFilterChange('')}
-                                    className="px-2 py-2 text-gray-500 hover:text-gray-700 transition-colors duration-200"
-                                    title="Сбросить фильтр статуса"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
+                        <button
+                            onClick={handleRefresh}
+                            disabled={isLoading || isSearching}
+                            className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {(isLoading || isSearching) ? (
+                                <>
+                                    <RefreshCw size={16} className="animate-spin" />
+                                    Loading...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw size={16} />
+                                    {isSearchMode ? 'Back to Orders' : 'Refresh'}
+                                </>
                             )}
-                        </div>
-
-                        {/* Per Page Selector */}
-                        <div className="flex items-center gap-2">
-                            <label className="text-sm text-gray-700">На странице:</label>
-                            <select
-                                value={ordersPerPage}
-                                onChange={(e) => {
-                                    const newLimit = Number(e.target.value);
-                                    if (statusFilter) {
-                                        fetchOrders({ page: 1, limit: newLimit }, { text_status: statusFilter });
-                                    } else {
-                                        changePageSize(newLimit);
-                                    }
-                                }}
-                                disabled={isLoading}
-                                className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value={5}>5</option>
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={50}>50</option>
-                            </select>
-                        </div>
+                        </button>
                     </div>
-
-                    <button
-                        onClick={handleRefresh}
-                        disabled={isLoading || isSearching}
-                        className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        {(isLoading || isSearching) ? (
-                            <>
-                                <RefreshCw size={16} className="animate-spin" />
-                                Loading...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw size={16} />
-                                {isSearchMode ? 'Back to Orders' : 'Refresh'}
-                            </>
-                        )}
-                    </button>
                 </div>
-            </div>
+            )}
 
-            {/* Search Results Summary */}
-            {isSearchMode && searchResults && (
+            {/* Search Results Summary - Only for My Orders tab */}
+            {activeTab === 'my-orders' && isSearchMode && searchResults && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                     <div className="flex items-center justify-between">
                         <div>
@@ -354,35 +411,26 @@ export default function OrdersDemo() {
             {/* Orders List */}
             {!isLoading && !isSearching && (
                 <>
-                    {displayOrders.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {displayOrders.map(order => (
-                                <OrderCard
-                                    key={order._id}
-                                    order={order}
-                                    onChangeStatus={(id, st) => changeStatus(st, order.order_id)}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                            <div className="text-gray-400 text-6xl mb-4">📋</div>
-                            <h3 className="text-xl font-medium text-gray-600 mb-2">
-                                {isSearchMode ? 'No your orders found' : 'No orders found'}
-                            </h3>
-                            <p className="text-gray-500">
-                                {isSearchMode
-                                    ? 'No orders belonging to you match the search criteria. Try different keywords.'
-                                    : 'There are no orders matching your criteria.'
-                                }
-                            </p>
-                        </div>
+                    {activeTab === 'my-orders' && (
+                        <MyOrdersTab
+                            displayOrders={displayOrders}
+                            changeStatus={changeStatus}
+                            isSearchMode={isSearchMode}
+                        />
+                    )}
+
+                    {activeTab === 'claimed' && (
+                        <ClaimedOrdersTab />
+                    )}
+
+                    {activeTab === 'available-to-claim' && (
+                        <AvailableOrdersTab />
                     )}
                 </>
             )}
 
-            {/* Pagination - Only for regular orders, not search */}
-            {!isSearchMode && pagination && totalPages > 1 && !isLoading && (
+            {/* Pagination - Only for My Orders tab, not search */}
+            {activeTab === 'my-orders' && !isSearchMode && pagination && totalPages > 1 && !isLoading && (
                 <div className="mt-8">
                     {/* Information about results */}
                     <div className="flex items-center justify-center mb-4">

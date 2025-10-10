@@ -196,8 +196,9 @@ interface BufferState {
 // ===== ИНТЕРФЕЙС STORE =====
 // Тип для незаклейменных заявок
 export interface OrderForClaim {
-    client_id: string;
-    orderData: { 
+    _id: string;
+    orderData: {
+        phoneNumber(phoneNumber: any): unknown 
         order_id: number;
         clientName: string;
         text: string;
@@ -256,6 +257,9 @@ export interface OrderState extends BufferState {
         read: boolean;
     }>;
     noteOfClaimedOrder: NoteOfClaimedOrder[];
+
+    //==== ДЕЙСТВИЯ С ДОСТУПНЫМИ ДЛЯ КЛЕЙМА =====
+    claimRequest: (claim_Object_Id: string,team:string) => Promise<{message: string, phone: string }>;
     
     // ===== ДЕЙСТВИЯ С ЗАКЛЕЙМЕННЫМИ ЗАКАЗАМИ =====
     clearClaimedOrders: () => void;
@@ -277,6 +281,7 @@ export interface OrderState extends BufferState {
 
                 // ===== 🆕 WEBSOCKET ДЕЙСТВИЯ =====
             connectSocket: () => void;
+            autoReconnect: () => Promise<void>;
 
             // ===== 🆕 АДРЕСНЫЕ УВЕДОМЛЕНИЯ =====
             showAddressFitNotification: (message: string, nearestTeam: string, address: string, orderId?: string, phoneNumber?: string) => void;
@@ -537,9 +542,83 @@ export const useOrderStore = create<OrderState>()(
                 set({ unclaimedRequests: requests });
             },
 
+            // ===== ДЕЙСТВИЯ С ДОСТУПНЫМИ ДЛЯ КЛЕЙМА =====
+            claimRequest: async (claim_Object_Id: string,team:string) => {
+                const { currentUser } = get();
+                if (!currentUser) {
+                    set({ bufferError: 'Пользователь не авторизован' });
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`https://bot-crm-backend-756832582185.us-central1.run.app/api/current-available-claims/claim`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ team, claim_Object_Id: claim_Object_Id, at: currentUser.userAt })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Отправляем событие в комнату команды о том, что заявка взята
+                    const { socket } = get();
+                    if (socket && socket.connected) {
+                        socket.emit('order-claimed-by-user', {
+                            at: currentUser.userAt,
+                            team: team,
+                            claim_Object_Id: claim_Object_Id,
+                            userName: currentUser.userName || currentUser.userAt,
+                            timestamp: new Date().toISOString()
+                        });
+                        console.log('🔔 Sent order-claimed-by-user event to team room:', team);
+                    } else {
+                        console.warn('⚠ Socket not connected, cannot notify team about claim');
+                    }
+                    
+                    return data;
+                } catch (error) {
+                    console.error('❌ Error claiming request:', error);
+                    throw error;
+                }
+            },
 
 
             // ===== 🆕 WEBSOCKET ДЕЙСТВИЯ =====
+            // Функция для автоматического переподключения
+            autoReconnect: async () => {
+                const { socket, isSocketConnected, currentUser } = get();
+                
+                if (!socket || !currentUser) {
+                    console.log('⚠ Нет сокета или пользователя для переподключения');
+                    return;
+                }
+                
+                // Проверяем состояние соединения
+                if (!socket.connected && !isSocketConnected) {
+                    console.log('🔄 Обнаружено отключение, инициируем переподключение...');
+                    
+                    // Сбрасываем флаг блокировки
+                    (window as any).__activeSocketConnection = false;
+                    
+                    // Показываем уведомление
+                    toast('🔄 Переподключаемся к серверу...', { 
+                        duration: 3000,
+                        icon: '🔄'
+                    });
+                    
+                    // Инициируем переподключение
+                    try {
+                        await get().connectSocket();
+                    } catch (error) {
+                        console.error('❌ Ошибка при автоматическом переподключении:', error);
+                        toast.error('❌ Не удалось переподключиться автоматически');
+                    }
+                }
+            },
+
             connectSocket: async () => {
                 const { currentUser, socket: existingSocket } = get();
                 
@@ -631,14 +710,19 @@ export const useOrderStore = create<OrderState>()(
                     transports: ['websocket', 'polling'],
                     path: '/socket.io',
                     reconnection: true,
-                    reconnectionAttempts: 5,        // Уменьшаем с 20 до 5
-                    reconnectionDelay: 5000,        // 5 секунд вместо 2
-                    reconnectionDelayMax: 60000,    // 1 минута вместо 30 секундсекунд
-                    timeout: 60000,                 // Увеличиваем с 30 до 60 секунд
+                    reconnectionAttempts: Infinity,  // Бесконечные попытки переподключения
+                    reconnectionDelay: 1000,         // Быстрое первое переподключение
+                    reconnectionDelayMax: 5000,      // Максимум 5 секунд между попытками
+                    timeout: 20000,                  // 20 секунд на подключение
                     forceNew: false,
                     upgrade: true,
                     rememberUpgrade: true,
+                    // Настройки для стабильности соединения
+                    pingTimeout: 60000,              // 60 секунд на ответ ping
+                    pingInterval: 25000,             // Ping каждые 25 секунд
+                    // Дополнительные настройки
                     autoConnect: true,
+                    multiplex: true,
                     auth: {
                         at: authToken
                     },
@@ -725,21 +809,83 @@ export const useOrderStore = create<OrderState>()(
                         toast.success('Соединение восстановлено');
                         set({ isSocketConnected: true });
                     });
+              
 
+                    // Обработчик для события о взятии заявки с бэкенда
+                    socket.on('team-notification', (data: any) => {
+                        console.log('🔔 team-notification received from backend:', data);
+                        
+                        // Проверяем соединение при получении события
+                        if (!socket.connected) {
+                            console.log('⚠ Получено событие при отключенном соединении, переподключаемся...');
+                            get().autoReconnect();
+                        }
+                        
+                        try {
+                            const { type, userName, orderData, message, timestamp } = data;
+                            
+                            if (type === 'order-claimed') {
+                                // Немедленно удаляем заявку из локального списка
+                                const currentRequests = get().unclaimedRequests;
+                                const updatedRequests = currentRequests.filter(
+                                    req => req._id !== orderData._id && req.orderData?.order_id !== orderData.order_id
+                                );
+                                
+                                set({ unclaimedRequests: updatedRequests });
+                                
+                                // Показываем красивое уведомление
+                                toast.success(message || `📋 Заявка #${orderData.order_id} взята пользователем ${userName}`, {
+                                    duration: 5000,
+                                    icon: '✅',
+                                    style: {
+                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        fontSize: '14px',
+                                        fontWeight: '500',
+                                        padding: '12px 16px',
+                                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                                    }
+                                });
+                                
+                                console.log('✅ Immediately removed claimed order from local list:', orderData._id);
+                                
+                                // Дополнительно обновляем список с сервера через небольшую задержку
+                                setTimeout(() => {
+                                    if (currentUser?.team) {
+                                        get().loadUnclaimedRequests(currentUser.team);
+                                    }
+                                }, 500);
+                            }
+                        } catch (error) {
+                            console.error('❌ Error handling team-notification:', error);
+                        }
+                    });
                     // Добавляем обработчик reconnect_attempt
                     socket.on('reconnect_attempt', (attemptNumber: number) => {
-                        console.log(` Попытка переподключения #${attemptNumber}`);
+                        console.log(`🔄 Попытка переподключения #${attemptNumber}`);
+                        if (attemptNumber === 1) {
+                            toast('🔄 Восстанавливаем соединение...', { 
+                                duration: 3000,
+                                icon: '🔄'
+                            });
+                        }
                     });
 
                     // Добавляем обработчик reconnect_error
                     socket.on('reconnect_error', (error: any) => {
                         console.error('❌ Ошибка переподключения:', error);
+                        toast('⚠️ Проблема с соединением. Продолжаем попытки...', { 
+                            duration: 3000,
+                            icon: '⚠️'
+                        });
                     });
 
-                    // Добавляем обработчик reconnect_failed
+                    // Добавляем обработчик reconnect_failed (теперь не должен срабатывать с Infinity попытками)
                     socket.on('reconnect_failed', () => {
                         console.error('❌ Не удалось переподключиться после всех попыток');
-                        toast.error('Не удалось восстановить соединение. Проверьте интернет и попробуйте обновить страницу.');
+                        toast.error('❌ Критическая ошибка соединения. Обновите страницу.', { duration: 10000 });
                         set({ isSocketConnected: false });
                         (window as any).__activeSocketConnection = false; // Сбрасываем флаг
                     });
@@ -874,28 +1020,30 @@ export const useOrderStore = create<OrderState>()(
                         console.error('WebSocket ошибка:', error);
                     });
 
-                    // 🔄 Добавляем heartbeat для поддержания соединения
+                    // 🔄 Улучшенный heartbeat для поддержания соединения
                     const heartbeatInterval = setInterval(() => {
                         if (socket.connected) {
                             socket.emit('keep-alive');
-                            console.log(' Keep-alive sent to server');
+                            console.log('💓 Keep-alive sent to server');
                         } else {
                             console.log('⚠ Socket не подключен, пропускаем heartbeat');
+                            // Автоматически переподключаемся если соединение потеряно
+                            get().autoReconnect();
                         }
-                    }, 120000); 
+                    }, 60000); // Уменьшаем интервал до 60 секунд для более частых проверок
                     
                     // Обработчик keep-alive-ack от сервера
                     socket.on('keep-alive-ack', () => {
                         console.log('💓 Keep-alive acknowledged by server');
                     });
                     
-                    // Увеличиваем таймаут для heartbeat
+                    // Улучшенный таймаут для heartbeat
                     const heartbeatTimeout = setTimeout(() => {
                         if (socket.connected) {
                             console.log('⚠ Keep-alive timeout, проверяем соединение');
                             socket.emit('ping');
                         }
-                    }, 30000); // Увеличиваем с 10 до 30 секунд
+                    }, 15000); // Уменьшаем до 15 секунд для быстрого обнаружения проблем
 
                     // Обработчик pong от сервера
                     socket.on('pong', () => {
@@ -908,19 +1056,42 @@ export const useOrderStore = create<OrderState>()(
                         clearTimeout(heartbeatTimeout);
                         console.log('⚠ WebSocket отключен, причина:', reason);
                         set({ isSocketConnected: false });
-                        (window as any).__activeSocketConnection = false; // Сбрасываем флаг
                         
-                        // Более информативные сообщения
+                        // Не сбрасываем флаг сразу, даем Socket.IO время на автореконнект
+                        setTimeout(() => {
+                            if (!socket.connected) {
+                                (window as any).__activeSocketConnection = false;
+                            }
+                        }, 10000); // 10 секунд на попытку переподключения
+                        
+                        // Более информативные сообщения с оптимистичным тоном
                         if (reason === 'io server disconnect') {
-                            toast.error('Сервер разорвал соединение');
+                            toast('🔄 Сервер разорвал соединение. Переподключаемся...', { 
+                                duration: 5000,
+                                icon: '🔄'
+                            });
                         } else if (reason === 'io client disconnect') {
                             console.log('Клиент разорвал соединение');
                         } else if (reason === 'transport close') {
-                            toast.error('Соединение потеряно. Попытка переподключения...');
+                            toast('🔄 Соединение потеряно. Автоматическое переподключение...', { 
+                                duration: 5000,
+                                icon: '🔄'
+                            });
                         } else if (reason === 'ping timeout') {
-                            toast.error('Таймаут соединения. Попытка переподключения...');
+                            toast('🔄 Таймаут соединения. Переподключаемся...', { 
+                                duration: 5000,
+                                icon: '🔄'
+                            });
                         } else if (reason === 'server namespace disconnect') {
-                            toast.error('Соединение заменено новым');
+                            toast('🔄 Соединение заменено новым', { 
+                                duration: 3000,
+                                icon: '🔄'
+                            });
+                        } else {
+                            toast('🔄 Соединение потеряно. Переподключаемся...', { 
+                                duration: 5000,
+                                icon: '🔄'
+                            });
                         }
                     });
 
@@ -938,6 +1109,7 @@ export const useOrderStore = create<OrderState>()(
                         // Обновляем массив незаклейменных заявок при поступлении события
                         get().loadUnclaimedRequests(currentUser.team);
                     });
+
                 } // Конец блока __handlersBound
 
                 // Сохраняем socket в store и глобально для доступа из других компонентов

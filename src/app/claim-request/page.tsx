@@ -4,13 +4,13 @@ import { ClipboardClock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Header from "../form/components/Header"
 import Sidebar from "../form/components/Sidebar"
-import ModalSuccessWindow from './components/ModalSuccessWindow'
+import ModalSuccessWindow from '../myOrders/components/ModalSuccessWindow'
 import RequestCard from "./components/RequestCard"
 
 export default function ClaimRequestsPage() {
     // Состояние для модального окна
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [claimedRequestId, setClaimedRequestId] = useState<string | null>(null);
+
     const [claimedClientPhoneNumber, setClaimedClientPhoneNumber] = useState<string>('');
     const [claimedRequestText, setClaimedRequestText] = useState<string>('');
     
@@ -30,7 +30,6 @@ export default function ClaimRequestsPage() {
     const openModal = () => setIsModalOpen(true);
     const closeModal = () => {
         setIsModalOpen(false);
-        setClaimedRequestId(null);
         setClaimedRequestText('');
         setClaimedClientPhoneNumber('');
     };
@@ -40,7 +39,6 @@ export default function ClaimRequestsPage() {
         // Находим заявку по ID и сохраняем её данные
         const request = unclaimedRequests.find(req => req.orderData.order_id.toString() === requestId);
         if (request) {
-            setClaimedRequestId(requestId);
             setClaimedRequestText(request.orderData.text);
             setClaimedClientPhoneNumber(request.orderData.phoneNumber);
             openModal();
@@ -73,8 +71,7 @@ export default function ClaimRequestsPage() {
                         isOpen={isModalOpen}
                         onClose={closeModal}
                         title="Заявка принята!"
-                        id={claimedRequestId ?? undefined}
-                        message={`Вы успешно приняли заявку #${claimedRequestId} к работе`}
+                        message={`Вы успешно приняли заявку #$ к работе`}
                         requestText={claimedRequestText}
                         buttonText="Отлично!"
                     />

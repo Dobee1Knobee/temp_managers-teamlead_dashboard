@@ -11,7 +11,7 @@ interface ConnectionStatusProps {
 export default function ConnectionStatus({ showDetails = true, className = "", variant = 'sidebar' }: ConnectionStatusProps) {
     const isSocketConnected = useOrderStore(state => state.isSocketConnected);
     const currentUser = useOrderStore(state => state.currentUser);
-    const connectSocket = useOrderStore(state => state.connectSocket);
+    const autoReconnect = useOrderStore(state => state.autoReconnect);
     const [isReconnecting, setIsReconnecting] = useState(false);
 
     const handleReconnect = async () => {
@@ -19,7 +19,7 @@ export default function ConnectionStatus({ showDetails = true, className = "", v
         
         setIsReconnecting(true);
         try {
-            await connectSocket();
+            await autoReconnect();
         } catch (error) {
             console.error("Reconnection failed:", error);
         } finally {
@@ -32,6 +32,24 @@ export default function ConnectionStatus({ showDetails = true, className = "", v
             setIsReconnecting(false);
         }
     }, [isSocketConnected]);
+
+    // Периодическая проверка соединения
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const checkConnection = () => {
+            const socket = (window as any).__socketInstance;
+            if (socket && !socket.connected && !isReconnecting) {
+                console.log('🔄 Обнаружено отключение в ConnectionStatus, переподключаемся...');
+                autoReconnect();
+            }
+        };
+
+        // Проверяем каждые 30 секунд
+        const interval = setInterval(checkConnection, 30000);
+        
+        return () => clearInterval(interval);
+    }, [currentUser, isReconnecting, autoReconnect]);
 
     // Стили для разных вариантов
     const getStyles = () => {

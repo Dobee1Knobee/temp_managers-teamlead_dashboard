@@ -9,6 +9,7 @@ interface ModalSuccessWindowProps {
     id?: string
     requestText?: string
     buttonText?: string
+    clientPhoneNumber?: string
 }
 
 export default function ModalSuccessWindow({
@@ -18,6 +19,7 @@ export default function ModalSuccessWindow({
     message = "Операция выполнена успешно",
     id,
     requestText,
+    clientPhoneNumber,
     buttonText = "Понятно"
 }: ModalSuccessWindowProps) {
     // Закрытие по Escape клавише
@@ -57,7 +59,7 @@ export default function ModalSuccessWindow({
         >
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto animate-in fade-in-0 zoom-in-95 duration-200">
                 {/* Заголовок */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200">    
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                             <CheckCircle className="text-green-600" size={20} />
@@ -83,6 +85,17 @@ export default function ModalSuccessWindow({
                             <div className="bg-gray-50 rounded-lg p-3 max-h-60 overflow-y-auto">
                                 <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono" style={{ marginTop: '-1rem' }}>
                                     {requestText}
+                                </pre>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {clientPhoneNumber && (
+                        <div className="mb-6">
+                            <h3 className="text-sm font-semibold text-gray-800 mb-3">Телефон клиента:</h3>
+                            <div className="bg-gray-50 rounded-lg p-3 max-h-60 overflow-y-auto">
+                                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono" style={{  }}>
+                                    +1{clientPhoneNumber}
                                 </pre>
                             </div>
                         </div>
