@@ -2,7 +2,7 @@
 'use client';
 
 import ConnectionStatus from '@/components/ConnectionStatus'
-import { NoteOfClaimedOrder, useOrderStore } from '@/stores/orderStore'
+import { useOrderStore } from '@/stores/orderStore'
 import Order from "@/types/formDataType"
 import {
     Calendar,
@@ -20,7 +20,6 @@ import {
 } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import ClaimedOrderCard from './ClaimedOrderCard'
 import ConfidentialViewModal from './ConfidentialViewModal'
 
 export default function Sidebar() {
@@ -103,24 +102,6 @@ export default function Sidebar() {
             }
         };
     }, [searchQuery]);
-
-    // Обработка клика по заклеймленному заказу
-    const handleTakeToWork = (order: NoteOfClaimedOrder) => {
-        useOrderStore.setState({formIdClaimedOrderInProcess: order.form_id})
-
-        useOrderStore.setState({
-            formData: {
-                ...useOrderStore.getState().formData,
-                customerName: order.name,
-                phoneNumber: order.telephone,
-                city: order.city,
-            }
-        });
-        
-        setTimeout(() => {
-            router.push('/form');
-        }, 100);
-    };
 
     // Navigation handler
     const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule') => {
@@ -215,30 +196,48 @@ export default function Sidebar() {
                 <div className="flex-1 overflow-hidden">
                     {isExpanded ? (
                         <div className="p-2 space-y-2 h-full flex flex-col">
-                            {/* Ultra-compact Claimed Orders */}
+                            {/* Simple Notes for Conversation */}
                             <div className="flex-shrink-0">
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <h3 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                        <span>Claimed Orders</span>
-                                        {noteOfClaimedOrder && Array.isArray(noteOfClaimedOrder) && noteOfClaimedOrder.length > 0 && (
-                                            <span className="bg-blue-100 text-blue-600 text-xs px-1.5 py-0.5 rounded-full font-medium">
-                                                {noteOfClaimedOrder.length}
-                                            </span>
-                                        )}
-                                    </h3>
+                                <div className="mb-2 px-1">
+                                    <h3 className="text-xs font-semibold text-gray-600 mb-1">📝 Conversation Notes</h3>
                                 </div>
-                                
+                            
                                 {noteOfClaimedOrder && Array.isArray(noteOfClaimedOrder) && noteOfClaimedOrder.length > 0 ? (
-                                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                                    <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                                         {noteOfClaimedOrder.map(order => (
-                                            <ClaimedOrderCard key={order.telephone} order={order} onTakeToWork={() => {handleTakeToWork(order)}} />
+                                            <div key={order.telephone} className="bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded-r-lg shadow-sm hover:shadow-md transition-shadow">
+                                                {/* Customer Name - Header */}
+                                                <div className="font-semibold text-sm text-gray-800 mb-1">
+                                                    👤 {order.name || 'No name'}
+                                                </div>
+                                                
+                                                {/* Quick Info - Inline */}
+                                                <div className="text-xs text-gray-600 mb-2 space-y-0.5">
+                                                    {order.text.size && (
+                                                        <div><span className="font-medium">📺 Size:</span> {order.text.size}</div>
+                                                    )}
+                                                    {order.text.mountType && (
+                                                        <div><span className="font-medium">🔧 Mount:</span> {order.text.mountType}</div>
+                                                    )}
+                                                    {order.text.surfaceType && (
+                                                        <div><span className="font-medium">🏠 Surface:</span> {order.text.surfaceType}</div>
+                                                    )}
+                                                    {order.text.wires && (
+                                                        <div><span className="font-medium">🔌 Wires:</span> {order.text.wires}</div>
+                                                    )}
+                                                    {order.text.addons && (
+                                                        <div><span className="font-medium">➕ Add-ons:</span> {order.text.addons}</div>
+                                                    )}
+                                                </div>
+                                        
+                                            </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="text-center py-1.5 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                                        <FileText size={10} className="mx-auto text-gray-300 mb-0.5" />
-                                        <div className="text-xs text-gray-500">No orders</div>
+                                    <div className="text-center py-3 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                        <FileText size={12} className="mx-auto text-gray-300 mb-1" />
+                                        <div className="text-xs text-gray-500">No conversation notes</div>
+                                        <div className="text-xs text-gray-400 mt-1">Process requests to create notes</div>
                                     </div>
                                 )}
                             </div>

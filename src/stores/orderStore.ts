@@ -11,6 +11,7 @@ import {
 } from '@/types/formDataType'
 import { mapApiServicesToSelected } from "@/utils/mapApiServicesToSelected"
 import { mapOrderToFormPatch } from "@/utils/mapOrderToForm"
+import { parseOrderText } from "@/utils/orderTextParser"
 import { getSessionStorageJSON, removeSessionStorage, setSessionStorageJSON } from "@/utils/storage"
 import toast from "react-hot-toast"
 import { create } from 'zustand'
@@ -266,6 +267,7 @@ export interface OrderState extends BufferState {
     clearClaimedOrders: () => void;
     removeClaimedOrder: (formId: string) => void;
     syncClaimedOrders: () => NoteOfClaimedOrder[];
+    processOrderWithParsing: (orderText: string, clientName: string, formId: string, phoneNumber?: string) => Promise<void>;
     
                 // ===== 🆕 АДРЕСНЫЕ УВЕДОМЛЕНИЯ =====
             addressFitNotification: {
@@ -391,9 +393,9 @@ export interface OrderState extends BufferState {
 
 // ===== КАСТОМНЫЕ ИНТЕРФЕЙСЫ =====
 export interface NoteOfClaimedOrder {
-    telephone: string;
     form_id: string;
     name: string;
+    telephone: string;
     text: {
         size: string;
         mountType: string;
@@ -869,7 +871,7 @@ export const useOrderStore = create<OrderState>()(
                         if (attemptNumber === 1) {
                             toast('🔄 Восстанавливаем соединение...', { 
                                 duration: 3000,
-                                icon: '🔄'
+                
                             });
                         }
                     });
@@ -1069,14 +1071,13 @@ export const useOrderStore = create<OrderState>()(
                         if (reason === 'io server disconnect') {
                             toast('🔄 Сервер разорвал соединение. Переподключаемся...', { 
                                 duration: 5000,
-                                icon: '🔄'
+                            
                             });
                         } else if (reason === 'io client disconnect') {
                             console.log('Клиент разорвал соединение');
                         } else if (reason === 'transport close') {
                             toast('🔄 Соединение потеряно. Автоматическое переподключение...', { 
                                 duration: 5000,
-                                icon: '🔄'
                             });
                         } else if (reason === 'ping timeout') {
                             toast('🔄 Таймаут соединения. Переподключаемся...', { 
@@ -1086,12 +1087,10 @@ export const useOrderStore = create<OrderState>()(
                         } else if (reason === 'server namespace disconnect') {
                             toast('🔄 Соединение заменено новым', { 
                                 duration: 3000,
-                                icon: '🔄'
                             });
                         } else {
                             toast('🔄 Соединение потеряно. Переподключаемся...', { 
                                 duration: 5000,
-                                icon: '🔄'
                             });
                         }
                     });
@@ -1180,6 +1179,48 @@ export const useOrderStore = create<OrderState>()(
                 set({noteOfClaimedOrder: claimedOrders});
                 return claimedOrders;
             },
+
+            processOrderWithParsing: async (orderText: string, clientName: string, formId: string, phoneNumber?: string) => {
+                try {
+                    // Парсим текст заявки
+                    const parsedData = parseOrderText(orderText);
+                    
+                    // Создаем объект заказа с распарсенными данными
+                    const processedOrder: NoteOfClaimedOrder = {
+                        form_id: formId,
+                        name: clientName,
+                        telephone: phoneNumber || '',
+                        text: {
+                            size: parsedData.size,
+                            mountType: parsedData.mountType,
+                            surfaceType: parsedData.type,
+                            wires: parsedData.wires,
+                            addons: parsedData.addOns
+                        },
+                        city: '',
+                        state: ''
+                    };
+
+                    // Добавляем заказ в список заклейменных заказов
+                    const { noteOfClaimedOrder } = get();
+                    const updatedOrders = [...(noteOfClaimedOrder || []), processedOrder];
+                    set({ noteOfClaimedOrder: updatedOrders });
+
+                    // Показываем уведомление об успешной обработке
+                    toast.success(`Заявка ${clientName} обработана и добавлена в сайдбар`);
+                    
+                    console.log('✅ Заявка обработана:', {
+                        clientName,
+                        formId,
+                        parsedData
+                    });
+
+                } catch (error) {
+                    console.error('❌ Ошибка при обработке заявки:', error);
+                    toast.error('Ошибка при обработке заявки');
+                }
+            },
+
             getUnreadNotificationsCount: () => {
                 const { notifications } = get();
                 return notifications.filter(n => !n.read).length;

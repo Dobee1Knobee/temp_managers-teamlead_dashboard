@@ -2,7 +2,7 @@
 
 import { getPhoneNumber } from '@/hooks/useGetPhoneNumber'
 import { useOrderStore } from '@/stores/orderStore'
-import { Calendar, Eye, Loader2, MapPin } from 'lucide-react'
+import { Calendar, Eye, Loader2, MapPin, Repeat } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 interface ClaimedOrderCardProps {
@@ -28,7 +28,9 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
     const [showContactInfo, setShowContactInfo] = useState(false)
     const [phone,setPhone] = useState("")
     const [isLoadingPhone, setIsLoadingPhone] = useState(false)
+    const [isProcessing, setIsProcessing] = useState(false)
     const currentUser = useOrderStore(s => s.currentUser)
+    const processOrderWithParsing = useOrderStore(s => s.processOrderWithParsing)
     const at = currentUser?.userAt
     const team = currentUser?.team
     const { formId, clientName, createdAt, city, state, text, orderId, clientId, status, orderDataText } = order
@@ -37,6 +39,28 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
             setShowContactInfo(false)
         }
     }, [showDetails])
+
+    // Обработчик для кнопки "Process the request"
+    const handleProcessRequest = async () => {
+        if (!orderDataText) {
+            console.warn('Нет текста заявки для обработки');
+            return;
+        }
+
+        setIsProcessing(true);
+        try {
+            await processOrderWithParsing(
+                orderDataText,
+                clientName,
+                formId,
+                phone || undefined
+            );
+        } catch (error) {
+            console.error('Ошибка при обработке заявки:', error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
     useEffect(() => {
         setIsLoadingPhone(true)
         const fetchPhone = async () => {
@@ -192,6 +216,27 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
                 >
                     <Eye size={16} />
                     {showDetails ? 'Hide details' : 'Show details'}
+                </button>
+                <button 
+                    onClick={handleProcessRequest}
+                    disabled={isProcessing || !orderDataText}
+                    className={`w-full border rounded-lg p-3 text-sm flex items-center justify-center gap-2 transition-colors py-2 ${
+                        isProcessing || !orderDataText
+                            ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-green-50 border-green-200 text-gray-600 hover:text-gray-800 hover:bg-green-100'
+                    }`}
+                >
+                    {isProcessing ? (
+                        <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Processing...
+                        </>
+                    ) : (
+                        <>
+                            <Repeat size={16} />
+                            Process the request
+                        </>
+                    )}
                 </button>
             </div>
         </div>
