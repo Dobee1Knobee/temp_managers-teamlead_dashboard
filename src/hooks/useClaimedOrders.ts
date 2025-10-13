@@ -4,6 +4,7 @@ import { useOrderStore } from '@/stores/orderStore'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type ClaimedOrderLite = {
+    _id: string
     formId: string
     clientName: string
     createdAt: Date | null
@@ -92,7 +93,7 @@ export function useClaimedOrders(pollMs: number = 5 * 60 * 1000): UseClaimedOrde
             }
         }
         
-        return { formId, clientName, createdAt, city, state, text, orderId, clientId, status, orderDataText }
+        return { _id: formId, formId, clientName, createdAt, city, state, text, orderId, clientId, status, orderDataText }
     }, [])
 
     const fetchOnce = useCallback(async () => {
@@ -137,15 +138,14 @@ export function useClaimedOrders(pollMs: number = 5 * 60 * 1000): UseClaimedOrde
         }
     }, [at, fetchOnce, startPolling])
 
-    const getPhoneOnDemand = useCallback(async (formId: string): Promise<string | null> => {
+    const getPhoneOnDemand = useCallback(async (order_id: string,at:string,team:string): Promise<string | null> => {
         if (!at) return null
         try {
-            // No dedicated endpoint for a single form's phone was provided.
-            // We use the same endpoint, then extract phone for this form only, without persisting it in state.
-            const res = await fetch(`${API_BASE}/api/current-available-claims/getClaimedOrders/${encodeURIComponent(at)}`)
+          
+            const res = await fetch(`${API_BASE}/api/current-available-claims/getPhone/${encodeURIComponent(order_id)}/${encodeURIComponent(at)}/${encodeURIComponent(team)}`)
             if (!res.ok) return null
             const ordersWithPhone: any[] = await res.json()
-            const match = ordersWithPhone.find((f: any) => (f?._id || f?.form_id) === formId)
+            const match = ordersWithPhone.find((f: any) => (f?._id || f?.form_id) === order_id)
             const phone = match?.phone || match?.orderData?.telephone || match?.telephone || null
             return typeof phone === 'string' ? phone : null
         } catch {

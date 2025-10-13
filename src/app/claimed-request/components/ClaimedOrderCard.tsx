@@ -1,7 +1,9 @@
 "use client"
 
-import { Calendar, Eye, MapPin, Phone } from 'lucide-react'
-import { useState } from 'react'
+import { getPhoneNumber } from '@/hooks/useGetPhoneNumber'
+import { useOrderStore } from '@/stores/orderStore'
+import { Calendar, Eye, Loader2, MapPin } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface ClaimedOrderCardProps {
     order: {
@@ -21,11 +23,49 @@ interface ClaimedOrderCardProps {
     isLoadingPhone?: boolean
 }
 
-export default function ClaimedOrderCard({ order, phone, onShowPhone, isLoadingPhone }: ClaimedOrderCardProps) {
+export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCardProps) {
     const [showDetails, setShowDetails] = useState(false)
-    
+    const [showContactInfo, setShowContactInfo] = useState(false)
+    const [phone,setPhone] = useState("")
+    const [isLoadingPhone, setIsLoadingPhone] = useState(false)
+    const currentUser = useOrderStore(s => s.currentUser)
+    const at = currentUser?.userAt
+    const team = currentUser?.team
     const { formId, clientName, createdAt, city, state, text, orderId, clientId, status, orderDataText } = order
-    
+    useEffect(() => {
+        if (showDetails) {
+            setShowContactInfo(false)
+        }
+    }, [showDetails])
+    useEffect(() => {
+        setIsLoadingPhone(true)
+        const fetchPhone = async () => {
+            if (showContactInfo && at && team) {
+                try {
+                    const phoneNumber = await getPhoneNumber(at, team, formId)
+                    if(phoneNumber) {
+                        setPhone(phoneNumber)
+                    }
+                } catch (error) {
+                    console.error('Error fetching phone:', error)
+                } finally {
+                    setIsLoadingPhone(false)
+                }
+            }
+        }
+        
+        fetchPhone()
+    }, [showContactInfo, at, team, formId])
+    useEffect(() => {
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && showDetails) {
+                setShowDetails(false)
+            }
+        }
+        
+        document.addEventListener('keydown', handleEscape)
+        return () => document.removeEventListener('keydown', handleEscape)
+    }, [showDetails])
     // Format date
     const formatDate = (date: Date | null) => {
         if (!date) return '—'
@@ -144,36 +184,14 @@ export default function ClaimedOrderCard({ order, phone, onShowPhone, isLoadingP
             
             {/* Действия */}
             <div className="px-4 pb-4 space-y-3">
-                {/* Кнопка телефона */}
-                <div className="space-y-2">
-                    <button
-                        onClick={onShowPhone}
-                        disabled={isLoadingPhone}
-                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium"
-                    >
-                        <Phone size={16} />
-                        {isLoadingPhone ? 'Загрузка...' : 'Показать телефон'}
-                    </button>
-                    
-                    {phone && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                            <div className="text-center">
-                                <div className="text-xs font-medium text-blue-800 mb-1">Номер телефона</div>
-                                <div className="text-lg font-bold text-blue-900 font-mono tracking-wide">
-                                    {phone}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-                
+           
                 {/* Кнопка деталей */}
                 <button
                     onClick={() => setShowDetails(!showDetails)}
-                    className="w-full text-gray-600 hover:text-gray-800 text-sm flex items-center justify-center gap-2 transition-colors py-2 hover:bg-gray-50 rounded-lg"
+                    className="w-full bg-blue-50 border border-blue-200 rounded-lg p-3 text-gray-600 hover:text-gray-800 text-sm flex items-center justify-center gap-2 transition-colors py-2 hover:bg-gray-50 "
                 >
                     <Eye size={16} />
-                    {showDetails ? 'Скрыть детали' : 'Показать детали'}
+                    {showDetails ? 'Hide details' : 'Show details'}
                 </button>
             </div>
         </div>
@@ -220,8 +238,46 @@ export default function ClaimedOrderCard({ order, phone, onShowPhone, isLoadingP
                                     </div>
                                 </div>
                                 
+                                
                                 {/* Локация и дата */}
                                 <div className="grid grid-cols-2 gap-6">
+                                <div className="grid  gap-6">
+                                    {(city || state) && (
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <div className="text-sm font-medium text-gray-500 mb-1">Локация</div>
+                                            <div className="text-lg text-gray-900">
+                                                {state && city ? `${state}, ${city}` : state || city}
+                                            </div>
+                                        </div>
+                                    )}
+                                   <div>
+                                    <div className="relative flex items-center justify-center">
+                                        {!showContactInfo && (<button className="absolute  left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 px-3 py-1.5 
+                                        mt-28 bg-blue-500 hover:bg-blue-600 active:scale-95 text-white text-xs font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50" onClick={() => setShowContactInfo(true)}>Show contact info </button>)}
+                                    </div>
+                                    {!showContactInfo && (
+                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 blur-sm z-0 relative">
+                                        <div className="text-sm font-medium text-gray-500 mb-1">Contact info</div>
+                                        <div className="text-lg text-gray-900">1234567890 {isLoadingPhone && <Loader2 className="w-4 h-4 animate-spin inline ml-2" />}</div>
+                                    </div>
+                                    )}
+                                   {showContactInfo && (
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4  z-0 relative">
+                                    <div className="text-sm font-medium text-gray-500 mb-1">Contact info</div>
+                                    <div className="text-lg text-gray-900">
+                                        {isLoadingPhone ? (
+                                            <div className="flex items-center gap-2">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                <span>Loading...</span>
+                                            </div>
+                                        ) : (
+                                            phone || 'No phone available'
+                                        )}
+                                    </div>
+                                </div>
+                                   )}
+                                   </div>
+                                </div>
                                     {(city || state) && (
                                         <div className="bg-gray-50 rounded-lg p-4">
                                             <div className="text-sm font-medium text-gray-500 mb-1">Локация</div>

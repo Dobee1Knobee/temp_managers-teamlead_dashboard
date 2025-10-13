@@ -1,26 +1,36 @@
 import { useClaimedOrders } from '@/hooks/useClaimedOrders'
+import { getPhoneNumber } from '@/hooks/useGetPhoneNumber'
+import { useOrderStore } from '@/stores/orderStore'
 import { useState } from 'react'
 import ClaimedOrderCard from '../../claimed-request/components/ClaimedOrderCard'
 
 export default function ClaimedOrdersTab() {
     const { orders: claimedOrders, loading, error, getPhoneOnDemand } = useClaimedOrders()
     const [phoneStates, setPhoneStates] = useState<Record<string, { phone?: string; loading: boolean }>>({})
-
-    const handleShowPhone = async (formId: string) => {
-        if (phoneStates[formId]?.phone) return // Already loaded
+    const currentUser = useOrderStore(s => s.currentUser)
+    const at = currentUser?.userAt
+    const team = currentUser?.team
+    
+    const handleShowPhone = async (order_id: string) => {
+        if (phoneStates[order_id]?.phone) return // Already loaded
         
-        setPhoneStates(prev => ({ ...prev, [formId]: { loading: true } }))
+        if (!at || !team) {
+            console.error('Missing at or team for phone request');
+            return;
+        }
+        
+        setPhoneStates(prev => ({ ...prev, [order_id]: { loading: true } }))
         
         try {
-            const phone = await getPhoneOnDemand(formId)
+            const phone = await getPhoneNumber(at, team, order_id)
             setPhoneStates(prev => ({ 
                 ...prev, 
-                [formId]: { phone: phone || undefined, loading: false } 
+                [order_id]: { phone: phone || undefined, loading: false } 
             }))
         } catch {
             setPhoneStates(prev => ({ 
                 ...prev, 
-                [formId]: { loading: false } 
+                [order_id]: { loading: false } 
             }))
         }
     }
@@ -66,11 +76,11 @@ export default function ClaimedOrdersTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {claimedOrders.map(order => (
                 <ClaimedOrderCard
-                    key={order.formId}
+                    key={order._id}
                     order={order}
-                    phone={phoneStates[order.formId]?.phone}
-                    onShowPhone={() => handleShowPhone(order.formId)}
-                    isLoadingPhone={phoneStates[order.formId]?.loading || false}
+                    phone={phoneStates[order._id]?.phone}
+                    onShowPhone={() => handleShowPhone(order._id)}
+                    isLoadingPhone={phoneStates[order._id]?.loading || false}
                 />
             ))}
         </div>

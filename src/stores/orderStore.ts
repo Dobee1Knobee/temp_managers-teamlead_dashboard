@@ -257,6 +257,7 @@ export interface OrderState extends BufferState {
         read: boolean;
     }>;
     noteOfClaimedOrder: NoteOfClaimedOrder[];
+        //==== ДЕЙСТВИЯ С СМЕНОЙ =====
 
     //==== ДЕЙСТВИЯ С ДОСТУПНЫМИ ДЛЯ КЛЕЙМА =====
     claimRequest: (claim_Object_Id: string,team:string) => Promise<{message: string, phone: string }>;
@@ -384,8 +385,8 @@ export interface OrderState extends BufferState {
     clearSearchResults: () => void;
     viewNotMyOrder: (orderId: string) => Promise<void>;
 
-    // ===== СМЕНА =====
-    toggleShift: () => void;
+        //==== ДЕЙСТВИЯ С СМЕНОЙ =====
+        toggleShift: () => void;
 }
 
 // ===== КАСТОМНЫЕ ИНТЕРФЕЙСЫ =====
@@ -1405,17 +1406,33 @@ export const useOrderStore = create<OrderState>()(
             },
             toggleShift: async () => {
                 const currentShift = get().currentUser?.shift;
+                const currentUser = get().currentUser;
 
-                const at = get().currentUser?.userAt;
-                
+                if (!currentUser) {
+                    throw new Error('User not found');
+                }
+
                 const endpoint = currentShift 
-                    ? 'https://bot-crm-backend-756832582185.us-central1.run.app/api/user/turn-off-shift'
-                    : 'https://bot-crm-backend-756832582185.us-central1.run.app/api/user/turn-on-shift';
+                    ? 'https://zoom-webhook.lahandy.com/admin/shift_end'
+                    : 'https://zoom-webhook.lahandy.com/admin/shift_start';
+                
+                // Формируем payload согласно API
+                const payload = {
+                    event: currentShift ? "phone.shift_end" : "phone.shift_start",
+                    payload: {
+                        object: {
+                            name: currentUser.userName || "",
+                            at: currentUser.userAt || ""
+                        }
+                    }
+                };
                 
                 const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ at: at })
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
                 });
                 
                 if (!res.ok) {
@@ -1428,6 +1445,15 @@ export const useOrderStore = create<OrderState>()(
                 // Обновляем состояние и sessionStorage
                 const newShiftState = !currentShift;
                 setSessionStorageJSON('shift', newShiftState);
+                
+                // Обновляем состояние пользователя в сторе
+                set((state) => ({
+                    currentUser: state.currentUser ? {
+                        ...state.currentUser,
+                        shift: newShiftState
+                    } : null
+                }));
+                
                 return result;
             },
             // Получение заклейменных заказов
