@@ -4,6 +4,7 @@ import { getPhoneNumber } from '@/hooks/useGetPhoneNumber'
 import { useOrderStore } from '@/stores/orderStore'
 import { Calendar, Eye, Loader2, MapPin, Repeat } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import NotValidModal from './NotValidModal'
 
 interface ClaimedOrderCardProps {
     order: {
@@ -26,6 +27,7 @@ interface ClaimedOrderCardProps {
 export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCardProps) {
     const [showDetails, setShowDetails] = useState(false)
     const [showContactInfo, setShowContactInfo] = useState(false)
+    const [showNotValidModal,setShowNotValidModal] = useState(false)
     const [phone,setPhone] = useState("")
     const [isLoadingPhone, setIsLoadingPhone] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
@@ -39,7 +41,9 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
             setShowContactInfo(false)
         }
     }, [showDetails])
-
+    const handleNotValidOrder = () => {
+        setShowContactInfo(false)
+    }
     // Обработчик для кнопки "Process the request"
     const handleProcessRequest = async () => {
         if (!orderDataText) {
@@ -59,6 +63,25 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
             console.error('Ошибка при обработке заявки:', error);
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    // Обработчик для модалки невалидного заказа
+    const handleMarkAsInvalid = async (reason: string) => {
+        try {
+            // Здесь можно добавить логику отправки на сервер
+            console.log('Marking order as invalid:', {
+                orderId: formId,
+                clientName,
+                reason,
+                phone: phone || undefined
+            });
+            
+            // Показываем уведомление
+            
+        } catch (error) {
+            console.error('Error marking order as invalid:', error);
+            throw error;
         }
     };
     useEffect(() => {
@@ -217,6 +240,8 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
                     <Eye size={16} />
                     {showDetails ? 'Hide details' : 'Show details'}
                 </button>
+                
+                {/* Кнопка обработки */}
                 <button 
                     onClick={handleProcessRequest}
                     disabled={isProcessing || !orderDataText}
@@ -238,6 +263,7 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
                         </>
                     )}
                 </button>
+
             </div>
         </div>
             
@@ -369,18 +395,33 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
                         
                         {/* Футер модалки */}
                         <div className="p-6 border-t border-gray-200 bg-gray-50">
-                            <div className="flex justify-end">
+                            <div className="flex justify-end  ">
                                 <button
-                                    onClick={() => setShowDetails(false)}
-                                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                                    onClick={() => {
+                                        setShowDetails(false);
+                                        setShowNotValidModal(true);
+                                    }}
+                                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
                                 >
-                                    Закрыть
+                                    Not valid
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* Модалка для невалидного заказа */}
+            <NotValidModal
+                isOpen={showNotValidModal}
+                onClose={() => setShowNotValidModal(false)}
+                onConfirm={handleMarkAsInvalid}
+                orderInfo={{
+                    clientName,
+                    orderId: formId,
+                    phoneNumber: displayOrderId || undefined
+                }}
+            />
         </>
     )
 }
