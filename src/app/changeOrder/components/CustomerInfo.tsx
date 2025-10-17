@@ -1,12 +1,12 @@
 // CustomerInfo.tsx - ИНТЕГРИРОВАННАЯ ВЕРСИЯ
-import { useOrderStore } from '@/stores/orderStore'
+import { useOrderStore } from '@/stores/orderStore';
 
 export default function CustomerInfo() {
     // 🏪 Подключаемся к store
     const {
         formData,
         updateFormData,
-    
+        isViewMode,
     } = useOrderStore();
     
     return (
@@ -25,10 +25,13 @@ export default function CustomerInfo() {
                         onChange={(e) => updateFormData('phoneNumber', e.target.value)}
                         name="phone_fake"
                         autoComplete="off"
+                        disabled={isViewMode}
                         className={`w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none transition focus:ring duration-300 ease-in-out focus:ring-blue-400 ${
-                            formData.phoneNumber
-                                ? 'bg-white text-gray-900'
-                                : 'bg-gray-50 text-gray-500'
+                            isViewMode 
+                                ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                                : formData.phoneNumber
+                                    ? 'bg-white text-gray-900'
+                                    : 'bg-gray-50 text-gray-500'
                         }`}
                     />
 
@@ -51,10 +54,13 @@ export default function CustomerInfo() {
                         value={formData.customerName}
                         onChange={(e) => updateFormData('customerName', e.target.value)}
                         autoComplete="off"
+                        disabled={isViewMode}
                         className={`w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none transition focus:ring duration-300 ease-in-out focus:ring-blue-400 ${
-                            formData.customerName
-                                ? 'bg-white text-gray-900'
-                                : 'bg-gray-50 text-gray-500'
+                            isViewMode 
+                                ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                                : formData.customerName
+                                    ? 'bg-white text-gray-900'
+                                    : 'bg-gray-50 text-gray-500'
                         } `}
                     />
 
@@ -76,10 +82,13 @@ export default function CustomerInfo() {
                         value={formData.address}
                         onChange={(e) => updateFormData('address', e.target.value)}
                         autoComplete="off"
+                        disabled={isViewMode}
                         className={`w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none transition focus:ring duration-300 ease-in-out focus:ring-blue-400 ${
-                            formData.address
-                                ? 'bg-white text-gray-900'
-                                : 'bg-gray-50 text-gray-500'
+                            isViewMode 
+                                ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                                : formData.address
+                                    ? 'bg-white text-gray-900'
+                                    : 'bg-gray-50 text-gray-500'
                         }`}
                     />
 

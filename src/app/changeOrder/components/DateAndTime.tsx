@@ -1,7 +1,7 @@
-import {useOrderStore} from "@/stores/orderStore";
+import { useOrderStore } from "@/stores/orderStore";
 
 export default function DateAndTime() {
-    const { formData, updateFormData } = useOrderStore();
+    const { formData, updateFormData, isViewMode } = useOrderStore();
 
     return (
         <div className="bg-white shadow-md rounded-2xl p-6 m-9 w-full max-w-xl">
@@ -13,7 +13,12 @@ export default function DateAndTime() {
             <div className="flex items-center mb-4 gap-4">
                 <input
                     type="date"
-                    className="w-full px-4 py-3 bg-gray-50 text-gray-700 rounded-xl border border-gray-200 focus:outline-none focus:ring-violet-400 transition"
+                    disabled={isViewMode}
+                    className={`w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-violet-400 transition ${
+                        isViewMode 
+                            ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                            : 'bg-gray-50 text-gray-700'
+                    }`}
                     value={formData.date || ""}                         // ← читаем из стора
                     onChange={(e) => updateFormData("date", e.target.value)}
                 />
@@ -21,7 +26,12 @@ export default function DateAndTime() {
                 <input
                     type="text"
                     placeholder="1PM"
-                    className="w-full px-4 py-3 bg-gray-50 text-gray-700 rounded-xl border border-gray-200 focus:outline-none focus:ring-violet-400 transition"
+                    disabled={isViewMode}
+                    className={`w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-violet-400 transition ${
+                        isViewMode 
+                            ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                            : 'bg-gray-50 text-gray-700'
+                    }`}
                     value={formData.time || ""}                         // ← читаем из стора
                     onChange={(e) => updateFormData("time", e.target.value)}
                 />

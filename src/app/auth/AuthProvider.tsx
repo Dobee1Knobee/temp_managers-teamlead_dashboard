@@ -8,6 +8,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     const connectSocket      = useOrderStore(s => s.connectSocket);
     const autoReconnect      = useOrderStore(s => s.autoReconnect);
     const initFromStorage    = useOrderStore(s => s.initFromStorage);
+    const initializeSound    = useOrderStore(s => s.initializeSound);
 
     // 1) На первом маунте подтянуть пользователя из sessionStorage (если его ещё нет)
     const initedRef = useRef(false);
@@ -57,6 +58,41 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         document.addEventListener("visibilitychange", onVisible);
         return () => document.removeEventListener("visibilitychange", onVisible);
     }, [currentUser, isSocketConnected, autoReconnect]);
+
+    // 4) Инициализация звуковых уведомлений при первом взаимодействии
+    useEffect(() => {
+        let initialized = false;
+        
+        const handleFirstInteraction = () => {
+            if (initialized) return;
+            initialized = true;
+            
+            console.log('🔊 Initializing sound notifications...');
+            initializeSound();
+            
+            // Удаляем обработчики после первого взаимодействия
+            document.removeEventListener('click', handleFirstInteraction);
+            document.removeEventListener('keydown', handleFirstInteraction);
+            document.removeEventListener('touchstart', handleFirstInteraction);
+            document.removeEventListener('mousemove', handleFirstInteraction);
+            document.removeEventListener('scroll', handleFirstInteraction);
+        };
+
+        // Добавляем обработчики для первого взаимодействия
+        document.addEventListener('click', handleFirstInteraction);
+        document.addEventListener('keydown', handleFirstInteraction);
+        document.addEventListener('touchstart', handleFirstInteraction);
+        document.addEventListener('mousemove', handleFirstInteraction);
+        document.addEventListener('scroll', handleFirstInteraction);
+
+        return () => {
+            document.removeEventListener('click', handleFirstInteraction);
+            document.removeEventListener('keydown', handleFirstInteraction);
+            document.removeEventListener('touchstart', handleFirstInteraction);
+            document.removeEventListener('mousemove', handleFirstInteraction);
+            document.removeEventListener('scroll', handleFirstInteraction);
+        };
+    }, [initializeSound]);
 
     return <>{children}</>;
 }

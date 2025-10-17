@@ -1,4 +1,5 @@
-import { useDraggable } from "@dnd-kit/core"
+import { useOrderStore } from "@/stores/orderStore";
+import { useDraggable } from "@dnd-kit/core";
 
 export interface DraggableItemProps {
     item: {
@@ -12,7 +13,7 @@ export interface DraggableItemProps {
 
 export function DraggableItem({ item, category, isActive = false }: DraggableItemProps) {
     const itemId = item.value || item.label;
-
+    const isViewMode = useOrderStore(state => state.isViewMode);
 
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: itemId,
@@ -24,7 +25,8 @@ export function DraggableItem({ item, category, isActive = false }: DraggableIte
                 value: itemId,
                 category: category
             }
-        }
+        },
+        disabled: isViewMode // Отключаем drag в режиме просмотра
     });
 
     
@@ -68,13 +70,16 @@ export function DraggableItem({ item, category, isActive = false }: DraggableIte
     return (
         <div
             ref={setNodeRef}
-            {...listeners}
-            {...attributes}
+            {...(isViewMode ? {} : listeners)}
+            {...(isViewMode ? {} : attributes)}
             className={`
                 draggable-item rounded-lg text-white text-center text-xs font-medium 
                 px-3 py-2 min-h-[58px] flex flex-col justify-center items-center 
-                cursor-grab active:cursor-grabbing relative
-                ${styles.bg} ${styles.bgHover}
+                relative
+                ${isViewMode 
+                    ? 'bg-gray-400 cursor-not-allowed opacity-60' 
+                    : `cursor-grab active:cursor-grabbing ${styles.bg} ${styles.bgHover}`
+                }
                 ${isDragging || isActive ? 'opacity-30 scale-95' : 'opacity-100'}
             `}
             style={{
@@ -84,7 +89,7 @@ export function DraggableItem({ item, category, isActive = false }: DraggableIte
                 WebkitTouchCallout: 'none',
                 WebkitTapHighlightColor: 'transparent',
             }}
-            onMouseDown={() => console.log('🖱️ Mouse down on:', item.label)}
+            onMouseDown={() => !isViewMode && console.log('🖱️ Mouse down on:', item.label)}
             onTouchStart={() => console.log('👆 Touch start on:', item.label)}
         >
             <span className="leading-tight font-semibold">{item.label}</span>

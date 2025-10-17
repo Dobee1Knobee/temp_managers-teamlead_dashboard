@@ -25,6 +25,7 @@ export default function Masters({  city }: MastersProps) {
         formData,
         updateFormData,
         currentLeadID,
+        isViewMode,
     } = useOrderStore();
     
     useEffect(() => {
@@ -292,7 +293,12 @@ export default function Masters({  city }: MastersProps) {
                 <div className='flex flex-row gap-3 items-stre'>
                 <div className={`relative w-96 ${isAdditionalTechVisible ? 'w-96' : 'w-full'}`}>
                     <select
-                        className="w-full p-4 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 appearance-none bg-white"
+                        disabled={isViewMode}
+                        className={`w-full p-4 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 appearance-none ${
+                            isViewMode 
+                                ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                                : 'bg-white'
+                        }`}
                         value={formData.masterName}
                         onChange={(e) => {
                             updateFormData("masterName", e.target.value);
@@ -323,7 +329,7 @@ export default function Masters({  city }: MastersProps) {
                     <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   
                 </div>       
-                {isAdditionalTechVisible &&
+                {isAdditionalTechVisible && !isViewMode &&
                 (<button className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg text-center flex flex-col items-center transition-colors duration-200 shadow-sm hover:shadow-md" onClick={() => {setIsAddingExtraTech(true); setIsAdditionalTechVisible(false)}}>       
                     <Plus className="w-3 h-3" />
                     <span className="text-sm font-medium ">Add master</span>
@@ -345,7 +351,12 @@ export default function Masters({  city }: MastersProps) {
                 <div className='flex flex-row gap-3 items-stretch mt-3'>
                     <div className="relative w-96">
                         <select
-                            className="w-full p-4 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 appearance-none bg-white"
+                            disabled={isViewMode}
+                            className={`w-full p-4 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 appearance-none ${
+                                isViewMode 
+                                    ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                                    : 'bg-white'
+                            }`}
                             value={formData.additionalTechName}
                             onChange={(e) => {
                                 updateFormData("additionalTechName", e.target.value);

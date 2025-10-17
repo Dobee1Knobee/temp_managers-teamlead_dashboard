@@ -68,9 +68,9 @@ export default function AvailableOrdersTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {unclaimedRequests.map(order => (
                 <UnclaimedOrderCard
-                    key={order._id || order.orderData.order_id}
+                    key={order._id || order.client_id}
                     order={order}
-                    onClaim={() => handleClaimOrder(order._id || order.orderData.order_id.toString())}
+                    onClaim={() => handleClaimOrder(order._id.toString())}
                 />
             ))}
             <ModalSuccessWindow

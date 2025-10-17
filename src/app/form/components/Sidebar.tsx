@@ -5,18 +5,22 @@ import ConnectionStatus from '@/components/ConnectionStatus'
 import { useOrderStore } from '@/stores/orderStore'
 import Order from "@/types/formDataType"
 import {
+    AlertTriangle,
     Calendar,
     Car,
     ChevronLeft,
     ChevronRight,
     ClipboardList,
+    FileBarChart,
     FileText,
     Folder,
     Lock,
+    MessageSquare,
     Phone,
     Plus,
     Search,
-    User
+    User,
+    Users
 } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -25,7 +29,7 @@ import ConfidentialViewModal from './ConfidentialViewModal'
 export default function Sidebar() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<
-        'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | null
+        'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'messages' | 'managers' | 'clientlogs' | 'needs-action' | null
     >(null);
 
     // Состояния для поиска
@@ -38,7 +42,7 @@ export default function Sidebar() {
     const [showConfidentialModal, setShowConfidentialModal] = useState(false);
 
     const router = useRouter();
-
+    const userTeam = useOrderStore(state => state.currentUser?.team);
     // Данные из store
     const {
         orders,
@@ -98,13 +102,13 @@ export default function Sidebar() {
 
         return () => {
             if (searchTimeout) {
-                clearTimeout(searchTimeout);
+                clearTimeout(searchTimeout);    
             }
         };
     }, [searchQuery]);
 
     // Navigation handler
-    const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule') => {
+    const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'messages' | 'managers' | 'clientlogs' | 'needs-action') => {
         setActiveTab(tab);
 
         switch (tab) {
@@ -128,12 +132,26 @@ export default function Sidebar() {
                     setIsExpanded(true);
                 }
                 break;
+            case 'messages':
+                router.push('/messages');
+                break;
+            case 'managers':
+                router.push('/managers');
+                break;
+            case 'clientlogs':
+                router.push('/clientlogs');
+                break;
+            case 'needs-action':
+                router.push('/needs-action');
+                break;
         }
     };
 
     // Обработка клика по своему заказу
     const handleMyOrderClick = async (order:Order) => {
         try {
+            // Очищаем режим просмотра при обычном переходе
+            localStorage.removeItem('viewModeUserTeam');
             await getByLeadID(order.order_id);
             router.push('/changeOrder');
         } catch (error) {
@@ -150,6 +168,8 @@ export default function Sidebar() {
     // Подтверждение просмотра чужого заказа
     const handleConfirmView = async () => {
         if (selectedNotMyOrder) {
+            // Очищаем режим просмотра при обычном переходе
+            localStorage.removeItem('viewModeUserTeam');
             await viewNotMyOrder(selectedNotMyOrder.order_id);
             await getByLeadID(selectedNotMyOrder.order_id);
             setShowConfidentialModal(false);
@@ -194,7 +214,61 @@ export default function Sidebar() {
   
                
                 <div className="flex-1 overflow-hidden">
-                    {isExpanded ? (
+                    {isExpanded && userTeam === 'H' ? (
+                        /* Team H (Team Leads) - Special Sidebar */
+                        <div className="p-2 space-y-2 h-full flex flex-col">
+                            {/* Team H Header */}
+                            <div className="flex-shrink-0">
+                                <div className="mb-2 px-1">
+                                    <h3 className="text-xs font-semibold text-gray-600 mb-1">👑 Team Lead Dashboard</h3>
+                                </div>
+                            </div>
+
+                            {/* Team H Navigation Buttons */}
+                            <div className="flex-shrink-0 space-y-1.5">
+                                <button
+                                    onClick={() => handleClick('managers')}
+                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
+                                        activeTab === 'managers'
+                                            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                    }`}
+                                >
+                                    <Users size={14} />
+                                    <span>Managers</span>
+                                </button>
+
+                                <button
+                                    onClick={() => handleClick('clientlogs')}
+                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
+                                        activeTab === 'clientlogs'
+                                            ? 'bg-green-50 text-green-700 border border-green-200 shadow-sm'
+                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                    }`}
+                                >
+                                    <FileBarChart size={14} />
+                                    <span>Client Logs</span>
+                                </button>
+
+                                <button
+                                    onClick={() => handleClick('needs-action')}
+                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
+                                        activeTab === 'needs-action'
+                                            ? 'bg-orange-50 text-orange-700 border border-orange-200 shadow-sm'
+                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                    }`}
+                                >
+                                    <AlertTriangle size={14} />
+                                    <span>Needs Action</span>
+                                </button>
+                            </div>
+
+                            {/* Connection Status for Team H */}
+                            <div className="flex-shrink-0">
+                                <ConnectionStatus />
+                            </div>
+                        </div>
+                    ) : isExpanded && userTeam !== 'H' ? (
                         <div className="p-2 space-y-2 h-full flex flex-col">
                             {/* Simple Notes for Conversation */}
                             <div className="flex-shrink-0">
@@ -279,7 +353,17 @@ export default function Sidebar() {
                                         </span>
                                     )}
                                 </button>
-
+                                <button
+                                    onClick={() => handleClick('messages')}
+                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
+                                        activeTab === 'messages'
+                                            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                    }`}
+                                >
+                                    <MessageSquare size={14} />
+                                    <span>Messages</span>
+                                </button>
                                 <button
                                     onClick={() => handleClick('my-orders')}
                                     className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
@@ -448,6 +532,45 @@ export default function Sidebar() {
                                 </div>
                             )}
                         </div>
+                    ) : userTeam === 'H' ? (
+                        /* Team H Collapsed Sidebar */
+                        <div className="p-2 space-y-2">
+                            <button
+                                onClick={() => handleClick('managers')}
+                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                    activeTab === 'managers'
+                                        ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-200'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                }`}
+                                title="Managers"
+                            >
+                                <Users size={16} />
+                            </button>
+
+                            <button
+                                onClick={() => handleClick('clientlogs')}
+                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                    activeTab === 'clientlogs'
+                                        ? 'bg-green-50 text-green-600 shadow-sm border border-green-200'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                }`}
+                                title="Client Logs"
+                            >
+                                <FileBarChart size={16} />
+                            </button>
+
+                            <button
+                                onClick={() => handleClick('needs-action')}
+                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                    activeTab === 'needs-action'
+                                        ? 'bg-orange-50 text-orange-600 shadow-sm border border-orange-200'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                }`}
+                                title="Needs Action"
+                            >
+                                <AlertTriangle size={16} />
+                            </button>
+                        </div>
                     ) : (
                         /* Ultra-compact collapsed sidebar */
                         <div className="p-2 space-y-2">
@@ -519,6 +642,16 @@ export default function Sidebar() {
                                 <Car size={16} />
                             </button>
                             <button
+                                    onClick={() => handleClick('messages')}
+                                    className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                        activeTab === 'messages'
+                                            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                    }`}
+                                >
+                                    <MessageSquare size={14} />
+                                </button>
+                            <button
                                 onClick={() => handleClick('schedule')}
                                 className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
                                         activeTab === 'schedule'
@@ -555,7 +688,6 @@ export default function Sidebar() {
                     onCancel={() => {
                         handleCancelView();
                     }}
-                    orderId={selectedNotMyOrder?.order_id}
                     orderInfo={selectedNotMyOrder ? {
                         order_id: selectedNotMyOrder.order_id,
                         owner: selectedNotMyOrder.owner,

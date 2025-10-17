@@ -12,6 +12,7 @@ import {
 import { mapApiServicesToSelected } from "@/utils/mapApiServicesToSelected"
 import { mapOrderToFormPatch } from "@/utils/mapOrderToForm"
 import { parseOrderText } from "@/utils/orderTextParser"
+import { initializeSoundNotifications, playNotificationSound } from "@/utils/soundNotifications"
 import { getSessionStorageJSON, removeSessionStorage, setSessionStorageJSON } from "@/utils/storage"
 import toast from "react-hot-toast"
 import { create } from 'zustand'
@@ -198,9 +199,9 @@ interface BufferState {
 // Тип для незаклейменных заявок
 export interface OrderForClaim {
     _id: string;
+    client_id: number;
     orderData: {
         phoneNumber(phoneNumber: any): unknown 
-        order_id: number;
         clientName: string;
         text: string;
         team: string;
@@ -231,6 +232,7 @@ export interface OrderState extends BufferState {
     isLoading: boolean;
     isSaving: boolean;
     error: string | null;
+    isViewMode: boolean; // Режим просмотра (только чтение)
 
     // ===== ПОЛЬЗОВАТЕЛЬ =====
     currentUser: {
@@ -268,6 +270,10 @@ export interface OrderState extends BufferState {
     removeClaimedOrder: (formId: string) => void;
     syncClaimedOrders: () => NoteOfClaimedOrder[];
     processOrderWithParsing: (orderText: string, clientName: string, formId: string, phoneNumber?: string) => Promise<void>;
+    initializeSound: () => void;
+    
+    // ===== РЕЖИМ ПРОСМОТРА =====
+    setViewMode: (isViewMode: boolean) => void;
     
                 // ===== 🆕 АДРЕСНЫЕ УВЕДОМЛЕНИЯ =====
             addressFitNotification: {
@@ -445,6 +451,7 @@ export const useOrderStore = create<OrderState>()(
             isLoading: false,
             isSaving: false,
             error: null,
+            isViewMode: false,
             currentUser: null,
             formIdClaimedOrderInProcess: null,
             shouldRedirectToMyOrders: false,
@@ -830,14 +837,18 @@ export const useOrderStore = create<OrderState>()(
                             if (type === 'order-claimed') {
                                 // Немедленно удаляем заявку из локального списка
                                 const currentRequests = get().unclaimedRequests;
-                                const updatedRequests = currentRequests.filter(
-                                    req => req._id !== orderData._id && req.orderData?.order_id !== orderData.order_id
-                                );
+                                const updatedRequests = currentRequests.filter(req => {
+                                    // поддерживаем разные схемы идентификаторов
+                                    const reqId = (req as any)?._id ?? (req as any)?.orderData?.order_id ?? (req as any)?.orderData?.client_id;
+                                    const incomingId = (orderData as any)?._id ?? (orderData as any)?.order_id ?? (orderData as any)?.client_id;
+                                    return String(reqId) !== String(incomingId);
+                                });
                                 
                                 set({ unclaimedRequests: updatedRequests });
                                 
                                 // Показываем красивое уведомление
-                                toast.success(message || `📋 Заявка #${orderData.order_id} взята пользователем ${userName}`, {
+                                const msgId = (orderData as any)?.order_id ?? (orderData as any)?.client_id ?? 'unknown';
+                                toast.success(message || `📋 Заявка #${msgId} взята пользователем ${userName}`, {
                                     duration: 5000,
                                     icon: '✅',
                                     style: {
@@ -1099,12 +1110,23 @@ export const useOrderStore = create<OrderState>()(
                     socket.on('order-for-team-claim', (orderData: any) => {
                         console.log('🔍 order-for-team-claim:', orderData);
                         try {
-                            const orderId = orderData?.orderData?.order_id ?? orderData?.order_id;
-                            if (orderId) {
-                                toast.success(`🔍 Order for claim in team buffer: ${orderId}`);
-                            }
-                        } catch (_) {
-                            // no-op: защищаемся от неожиданных форматов
+                            // Поддерживаем старую и новую схемы: order_id → client_id/notification_id
+                            const displayId = 
+                                orderData?.orderData?.client_id
+                                ?? orderData?.client_id
+                                ?? orderData?.orderData?.order_id
+                                ?? orderData?.order_id
+                                ?? orderData?.notification_id
+                                ?? 'new claim';
+
+                            // Воспроизводим звуковое уведомление и показываем тост всегда
+                            playNotificationSound();
+                            toast.success(`🔔 New claim available: ${String(displayId)}`);
+                        } catch (e) {
+                            console.warn('⚠️ order-for-team-claim parse warning:', e);
+                            // Даже при странном формате — уведомим пользователя
+                            playNotificationSound();
+                            toast.success('🔔 New claim available');
                         }
                         // Обновляем массив незаклейменных заявок при поступлении события
                         get().loadUnclaimedRequests(currentUser.team);
@@ -1219,6 +1241,10 @@ export const useOrderStore = create<OrderState>()(
                     console.error('❌ Ошибка при обработке заявки:', error);
                     toast.error('Ошибка при обработке заявки');
                 }
+            },
+
+            initializeSound: () => {
+                initializeSoundNotifications();
             },
 
             getUnreadNotificationsCount: () => {
@@ -1445,6 +1471,13 @@ export const useOrderStore = create<OrderState>()(
                     return [];
                 }
             },
+
+            // Управление режимом просмотра
+            setViewMode: (isViewMode: boolean) => {
+                console.log('👁️ Setting view mode:', isViewMode);
+                set({ isViewMode });
+            },
+
             toggleShift: async () => {
                 const currentShift = get().currentUser?.shift;
                 const currentUser = get().currentUser;

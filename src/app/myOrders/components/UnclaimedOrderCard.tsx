@@ -1,15 +1,17 @@
 import { Clock, FileText, User } from 'lucide-react'
 
 interface UnclaimedOrder {
-    _id?: string;
+    notification_id?: string;
     client_id: string;
     orderData: {
-        order_id: number;
         client_name: string;
+        telephone: string;
         text: string;
         team: string;
         date: string;
     };
+    targetTeam: string;
+    timestamp: string;
 }
 
 interface UnclaimedOrderCardProps {
@@ -18,8 +20,17 @@ interface UnclaimedOrderCardProps {
 }
 
 export default function UnclaimedOrderCard({ order, onClaim }: UnclaimedOrderCardProps) {
-    const { _id, client_id, orderData } = order;
-    const { order_id, client_name, text, team, date } = orderData;
+    // Проверяем, что order и orderData существуют
+    if (!order || !order.orderData) {
+        return (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-2.5">
+                <div className="text-sm text-gray-500">Invalid order data</div>
+            </div>
+        );
+    }
+
+    const { notification_id, client_id, orderData, targetTeam, timestamp } = order;
+    const { client_name, telephone, text, team, date } = orderData;
     
     // Format date
     const formatDate = (dateStr: string) => {
@@ -38,8 +49,8 @@ export default function UnclaimedOrderCard({ order, onClaim }: UnclaimedOrderCar
         }
     }
     
-    // Get short ID for display
-    const displayOrderId = order_id
+    // Get short ID for display - используем client_id из orderData или notification_id
+    const displayOrderId = client_id?.toString() || notification_id?.toString() || 'N/A'
     
     // Extract key info from text
     const extractTextInfo = (text: string) => {
@@ -99,10 +110,18 @@ export default function UnclaimedOrderCard({ order, onClaim }: UnclaimedOrderCar
                 </div>
                 
                 {/* Order ID */}
-                <div className="flex justify-between items-center text-sm">
+                <div className="flex justify-between items-center text-sm mb-1">
                     <span className="text-gray-600 font-medium">ID:</span>
                     <span className="text-gray-800 font-semibold text-right max-w-36 truncate bg-purple-50 px-1.5 py-0.5 rounded text-xs">{displayOrderId}</span>
                 </div>
+                
+                {/* Phone */}
+                {telephone && (
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600 font-medium">Phone:</span>
+                        <span className="text-gray-800 font-semibold text-right max-w-36 truncate bg-green-50 px-1.5 py-0.5 rounded text-xs">{telephone}</span>
+                    </div>
+                )}
             </div>
             
             {/* Action Button - Compact but beautiful */}

@@ -1,8 +1,8 @@
 // DropArea.tsx — адаптивные размеры + total не выходит за рамки
 "use client";
-import ErrorDisplay from "@/components/ErrorDisplay"
-import { useOrderStore } from "@/stores/orderStore"
-import { useDroppable } from "@dnd-kit/core"
+import ErrorDisplay from "@/components/ErrorDisplay";
+import { useOrderStore } from "@/stores/orderStore";
+import { useDroppable } from "@dnd-kit/core";
 import {
     AlertTriangle,
     Check,
@@ -18,8 +18,8 @@ import {
     Tv,
     X,
     XCircle
-} from 'lucide-react'
-import React, { useState } from "react"
+} from 'lucide-react';
+import React, { useState } from "react";
 
 export interface ServiceItem {
     id: string;
@@ -363,6 +363,7 @@ export const DropArea: React.FC<DropAreaProps> = ({
                                                       onDrop,
                                                   }) => {
     const { isOver, setNodeRef } = useDroppable({ id: "drop-area" });
+    const isViewMode = useOrderStore(state => state.isViewMode);
 
     const {
         formData,
@@ -552,9 +553,14 @@ export const DropArea: React.FC<DropAreaProps> = ({
                                             <div className="flex items-center space-x-2 bg-gray-100 rounded-xl p-1">
                                                 <button
                                                     onClick={() =>
-                                                        item.orderId && onUpdateQuantity?.(item.orderId, (item.quantity || 1) - 1)
+                                                        !isViewMode && item.orderId && onUpdateQuantity?.(item.orderId, (item.quantity || 1) - 1)
                                                     }
-                                                    className="w-8 h-8 bg-white rounded-lg shadow-sm text-gray-600 hover:bg-red-50 hover:text-red-600 flex items-center justify-center"
+                                                    disabled={isViewMode}
+                                                    className={`w-8 h-8 rounded-lg shadow-sm flex items-center justify-center ${
+                                                        isViewMode 
+                                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                            : 'bg-white text-gray-600 hover:bg-red-50 hover:text-red-600'
+                                                    }`}
                                                 >
                                                     <Minus className="w-4 h-4" />
                                                 </button>
@@ -563,17 +569,27 @@ export const DropArea: React.FC<DropAreaProps> = ({
                                                 </span>
                                                 <button
                                                     onClick={() =>
-                                                        item.orderId && onUpdateQuantity?.(item.orderId, (item.quantity || 1) + 1)
+                                                        !isViewMode && item.orderId && onUpdateQuantity?.(item.orderId, (item.quantity || 1) + 1)
                                                     }
-                                                    className="w-8 h-8 bg-white rounded-lg shadow-sm text-gray-600 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center"
+                                                    disabled={isViewMode}
+                                                    className={`w-8 h-8 rounded-lg shadow-sm flex items-center justify-center ${
+                                                        isViewMode 
+                                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                            : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                                                    }`}
                                                 >
                                                     <Plus className="w-4 h-4" />
                                                 </button>
                                             </div>
 
                                             <button
-                                                onClick={() => onRemove(item.orderId?.toString() || item.id)}
-                                                className="bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200 flex items-center gap-1"
+                                                onClick={() => !isViewMode && onRemove(item.orderId?.toString() || item.id)}
+                                                disabled={isViewMode}
+                                                className={`px-2 py-1 rounded flex items-center gap-1 ${
+                                                    isViewMode 
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        : 'bg-red-100 text-red-600 hover:bg-red-200'
+                                                }`}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>

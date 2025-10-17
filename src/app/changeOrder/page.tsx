@@ -1,21 +1,21 @@
 // LoginForm.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ ДУБЛИРОВАНИЯ
 "use client";
-import { DropArea } from "@/app/changeOrder/components/DropArea"
-import Header from "@/app/form/components/Header"
-import Sidebar from "@/app/form/components/Sidebar"
-import StatusPills from "@/app/form/components/StatusPills"
-import "@/app/global.css"
-import ProtectedRoute from "@/components/ProtectedRoute"
-import { useUserByAt } from "@/hooks/useUserByAt"
-import { useOrderStore } from "@/stores/orderStore"
+import { DropArea } from "@/app/changeOrder/components/DropArea";
+import Header from "@/app/form/components/Header";
+import Sidebar from "@/app/form/components/Sidebar";
+import StatusPills from "@/app/form/components/StatusPills";
+import "@/app/global.css";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useUserByAt } from "@/hooks/useUserByAt";
+import { useOrderStore } from "@/stores/orderStore";
 import {
     DndContext, DragEndEvent, DragOverlay, DragStartEvent, KeyboardSensor, PointerSensor,
     TouchSensor, useSensor,
     useSensors
-} from "@dnd-kit/core"
-import { useSearchParams } from "next/navigation"
-import { Suspense, useEffect, useState } from "react"
-import ChangeOrderForm from './components/ChangeOrderForm'
+} from "@dnd-kit/core";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import ChangeOrderForm from './components/ChangeOrderForm';
 
 // Временный тип для совместимости с существующим DropArea
 interface ServiceItem {
@@ -36,6 +36,8 @@ function ChangeOrderContent() {
     const user = useUserByAt("devapi1");
     const searchParams = useSearchParams();
     const leadId = searchParams?.get('leadId');
+    const viewMode = searchParams?.get('viewMode') === 'true';
+    const viewModeParam = searchParams?.get('viewMode');
 
     // 🏪 Используем ТОЛЬКО store, убираем локальное состояние
     const {
@@ -54,6 +56,8 @@ function ChangeOrderContent() {
         resetForm,
         currentLeadID,
         getByLeadID,
+        setViewMode,
+        isViewMode,
     } = useOrderStore();
 
     // Состояние только для drag & drop UI
@@ -86,16 +90,39 @@ function ChangeOrderContent() {
     // Устанавливаем пользователя в store при загрузке
     useEffect(() => {
         if (user) {
+            // В режиме просмотра восстанавливаем команду пользователя из localStorage
+            let userTeam = user.team.toString();
+            if (viewMode) {
+                const savedTeam = localStorage.getItem('viewModeUserTeam');
+                if (savedTeam) {
+                    userTeam = savedTeam;
+                    console.log('🔄 Restoring user team from localStorage:', savedTeam);
+                }
+            }
+            
             setCurrentUser({
                 userId: user._id,
                 userName: user.name,
                 userAt: user.at,
-                team: user.team.toString(),
+                team: userTeam,
                 manager_id: user.manager_id,
                 shift: user.working || false
             });
         }
-    }, [user, setCurrentUser]);
+    }, [user, setCurrentUser, viewMode]);
+
+    // Устанавливаем режим просмотра на основе URL параметра
+    useEffect(() => {
+        if (viewMode) {
+            setViewMode(true);
+            console.log('👁️ Setting view mode from URL parameter');
+        } else if (!leadId) {
+            // Если нет leadId в URL, значит это обычный переход - сбрасываем режим просмотра
+            setViewMode(false);
+            // Очищаем сохраненную команду
+            localStorage.removeItem('viewModeUserTeam');
+        }
+    }, [viewMode, leadId, setViewMode]);
 
     // Загружаем данные заказа при наличии leadId
     useEffect(() => {
@@ -169,7 +196,7 @@ function ChangeOrderContent() {
 
                     <div className="flex-1 flex flex-col">
                         <Header />
-                        <StatusPills  />
+                        <StatusPills disabled={isViewMode} />
 
                         <div className="flex-1 flex overflow-hidden">
                             {/* Left side - Form */}
