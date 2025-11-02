@@ -24,7 +24,7 @@ interface ClaimedOrderCardProps {
     isLoadingPhone?: boolean
 }
 
-export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCardProps) {
+export default function ClaimedOrderCard({ order, onShowPhone, }: ClaimedOrderCardProps) {
     const [showDetails, setShowDetails] = useState(false)
     const [showContactInfo, setShowContactInfo] = useState(false)
     const [showNotValidModal,setShowNotValidModal] = useState(false)
@@ -183,7 +183,7 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
                         </div>
                         <div className="text-right flex-shrink-0">
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor}`}>
-                                #{displayOrderId}
+                                #c{clientId}
                             </span>
                         </div>
                     </div>
@@ -219,12 +219,7 @@ export default function ClaimedOrderCard({ order, onShowPhone }: ClaimedOrderCar
                             <span className="text-sm text-gray-700 truncate">{formatDate(createdAt)}</span>
                         </div>
                         
-                        {clientId && (
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                <span className="text-sm text-gray-600">ID: {clientId}</span>
-                            </div>
-                        )}
+                     
                     </div>
                 </div>
             </div>

@@ -41,6 +41,7 @@ export function useClaimedOrders(pollMs: number = 5 * 60 * 1000): UseClaimedOrde
         const formId = form?._id || form?.form_id || ''
         const orderId = form?.orderData?.order_id || form?.order_id || ''
         const createdAtRaw = form?.orderData?.date || form?.date || form?.createdAt || null
+        const clientId = form?.orderData?.client_id || form?.client_id || ''
         const createdAt = createdAtRaw ? new Date(createdAtRaw) : null
         const text = form?.text || ''
         const orderDataText = form?.orderData?.text || ''
@@ -48,7 +49,6 @@ export function useClaimedOrders(pollMs: number = 5 * 60 * 1000): UseClaimedOrde
         
         // Extract client name from different sources
         let clientName = '—'
-        let clientId = ''
         
         // First try orderData.client_name (array)
         if (form?.orderData?.client_name && Array.isArray(form.orderData.client_name) && form.orderData.client_name.length > 0) {
@@ -138,20 +138,22 @@ export function useClaimedOrders(pollMs: number = 5 * 60 * 1000): UseClaimedOrde
         }
     }, [at, fetchOnce, startPolling])
 
-    const getPhoneOnDemand = useCallback(async (order_id: string,at:string,team:string): Promise<string | null> => {
-        if (!at) return null
+    const getPhoneOnDemand = useCallback(async (formId: string): Promise<string | null> => {
+        const at = currentUser?.userAt
+        const team = currentUser?.team
+        if (!at || !team) return null
         try {
           
-            const res = await fetch(`${API_BASE}/api/current-available-claims/getPhone/${encodeURIComponent(order_id)}/${encodeURIComponent(at)}/${encodeURIComponent(team)}`)
+            const res = await fetch(`${API_BASE}/api/current-available-claims/getPhone/${encodeURIComponent(formId)}/${encodeURIComponent(at)}/${encodeURIComponent(team)}`)
             if (!res.ok) return null
             const ordersWithPhone: any[] = await res.json()
-            const match = ordersWithPhone.find((f: any) => (f?._id || f?.form_id) === order_id)
+            const match = ordersWithPhone.find((f: any) => (f?._id || f?.form_id) === formId)
             const phone = match?.phone || match?.orderData?.telephone || match?.telephone || null
             return typeof phone === 'string' ? phone : null
         } catch {
             return null
         }
-    }, [at])
+    }, [currentUser?.userAt, currentUser?.team])
 
     const value = useMemo<UseClaimedOrdersResult>(() => ({
         orders,
