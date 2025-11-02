@@ -373,6 +373,7 @@ export const DropArea: React.FC<DropAreaProps> = ({
         transferOrderToBuffer,
         validateForm,
         getTotalPrice,
+        clearClaimedOrders,
     } = useOrderStore();
 
     const [editingPrice, setEditingPrice] = useState<number | null>(null);
@@ -672,7 +673,12 @@ export const DropArea: React.FC<DropAreaProps> = ({
                         <div className="mt-4 grid grid-cols-12 gap-3">
                             <button
                                 onClick={async () => {
-                                    await useOrderStore.getState().createOrder(currentUser?.userAt);
+                                    try {
+                                        await createOrder(currentUser?.userAt);
+                                        clearClaimedOrders();
+                                    } catch (error) {
+                                        console.error('Error creating order:', error);
+                                    }
                                 }}
                                 className={`col-span-12 py-3 rounded-2xl border shadow transition flex items-center justify-center gap-2 ${
                                     isSaving

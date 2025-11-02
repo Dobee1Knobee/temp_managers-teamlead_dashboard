@@ -3,6 +3,7 @@
 import { getPhoneNumber } from '@/hooks/useGetPhoneNumber'
 import { useOrderStore } from '@/stores/orderStore'
 import { Calendar, Eye, Loader2, MapPin, Repeat } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import NotValidModal from './NotValidModal'
 
@@ -25,10 +26,12 @@ interface ClaimedOrderCardProps {
 }
 
 export default function ClaimedOrderCard({ order, onShowPhone, }: ClaimedOrderCardProps) {
+    const updateFormData = useOrderStore(s => s.updateFormData)
     const [showDetails, setShowDetails] = useState(false)
     const [showContactInfo, setShowContactInfo] = useState(false)
     const [showNotValidModal,setShowNotValidModal] = useState(false)
     const [phone,setPhone] = useState("")
+    const router = useRouter()
     const [isLoadingPhone, setIsLoadingPhone] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const currentUser = useOrderStore(s => s.currentUser)
@@ -45,7 +48,7 @@ export default function ClaimedOrderCard({ order, onShowPhone, }: ClaimedOrderCa
         setShowContactInfo(false)
     }
     // Обработчик для кнопки "Process the request"
-    const handleProcessRequest = async () => {
+    const handleProcessRequest = async (clientId:string) => {
         if (!orderDataText) {
             console.warn('Нет текста заявки для обработки');
             return;
@@ -59,6 +62,9 @@ export default function ClaimedOrderCard({ order, onShowPhone, }: ClaimedOrderCa
                 formId,
                 phone || undefined
             );
+            updateFormData('phoneNumber', "#c" + clientId)
+
+            router.push(`/form`)
         } catch (error) {
             console.error('Ошибка при обработке заявки:', error);
         } finally {
@@ -102,7 +108,7 @@ export default function ClaimedOrderCard({ order, onShowPhone, }: ClaimedOrderCa
         }
         
         fetchPhone()
-    }, [showContactInfo, at, team, formId])
+    }, [showContactInfo, at, team, formId, updateFormData])
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape' && showDetails) {
@@ -238,7 +244,7 @@ export default function ClaimedOrderCard({ order, onShowPhone, }: ClaimedOrderCa
                 
                 {/* Кнопка обработки */}
                 <button 
-                    onClick={handleProcessRequest}
+                    onClick={() => handleProcessRequest(clientId!.toString())}
                     disabled={isProcessing || !orderDataText}
                     className={`w-full border rounded-lg p-3 text-sm flex items-center justify-center gap-2 transition-colors py-2 ${
                         isProcessing || !orderDataText

@@ -263,7 +263,7 @@ export interface OrderState extends BufferState {
         //==== ДЕЙСТВИЯ С СМЕНОЙ =====
 
     //==== ДЕЙСТВИЯ С ДОСТУПНЫМИ ДЛЯ КЛЕЙМА =====
-    claimRequest: (claim_Object_Id: string,team:string) => Promise<{message: string, phone: string }>;
+    claimRequest: (claim_Object_Id: string,client_id:number,team:string) => Promise<{message: string, phone: string }>;
     
     // ===== ДЕЙСТВИЯ С ЗАКЛЕЙМЕННЫМИ ЗАКАЗАМИ =====
     clearClaimedOrders: () => void;
@@ -553,7 +553,7 @@ export const useOrderStore = create<OrderState>()(
             },
 
             // ===== ДЕЙСТВИЯ С ДОСТУПНЫМИ ДЛЯ КЛЕЙМА =====
-            claimRequest: async (claim_Object_Id: string,team:string) => {
+            claimRequest: async (claim_Object_Id: string,client_id:number,team:string) => {
                 const { currentUser } = get();
                 if (!currentUser) {
                     set({ bufferError: 'Пользователь не авторизован' });
@@ -564,7 +564,7 @@ export const useOrderStore = create<OrderState>()(
                     const response = await fetch(`https://bot-crm-backend-756832582185.us-central1.run.app/api/current-available-claims/claim`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ team, claim_Object_Id: claim_Object_Id, at: currentUser.userAt })
+                        body: JSON.stringify({  claim_Object_Id: claim_Object_Id, at: currentUser.userAt, client_id: client_id,team:team })
                     });
                     
                     if (!response.ok) {

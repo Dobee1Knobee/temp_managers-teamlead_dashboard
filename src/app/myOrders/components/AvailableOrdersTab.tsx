@@ -25,9 +25,21 @@ export default function AvailableOrdersTab() {
                 console.error('Request not found:', requestId);
                 return;
             }
-
+            console.log('request', request);
+            // Получаем правильный client_id - сначала пробуем из orderData, потом с верхнего уровня
+            const clientId = (request.orderData as any)?.client_id ?? request.client_id;
+            // Убеждаемся, что это число
+            const numericClientId = typeof clientId === 'number' ? clientId : parseInt(String(clientId), 10);
+            // Получаем team из orderData
+            const orderTeam = request.orderData?.team || currentUser?.team || '';
+            
+            if (isNaN(numericClientId)) {
+                console.error('Invalid client_id:', clientId);
+                return;
+            }
+            
             // Выполняем claim
-            const response = await claimRequest(requestId, currentUser?.team || '');
+            const response = await claimRequest(requestId, numericClientId, orderTeam);
             
             if (response && response.message) {
                 // Устанавливаем данные для модалки
@@ -69,7 +81,7 @@ export default function AvailableOrdersTab() {
             {unclaimedRequests.map(order => (
                 <UnclaimedOrderCard
                     key={order._id || order.client_id}
-                    order={order}
+                    order={order as any}
                     onClaim={() => handleClaimOrder(order._id.toString())}
                 />
             ))}
@@ -78,7 +90,7 @@ export default function AvailableOrdersTab() {
                 onClose={closeModal}
                 title="Заявка принята!"
                 message={`Вы успешно приняли заявку #${claimedRequestId} к работе`}
-                id={claimedRequestId}
+                id={claimedRequestId || undefined}
                 requestText={claimedRequestText}
                 clientPhoneNumber={claimedClientPhoneNumber}
                 buttonText="Отлично!"

@@ -199,6 +199,7 @@ export interface CreateOrderData {
     // Информация о клиенте
     leadName: string;
     phone: string;
+    clientId?: string;
     address?: string;
     zip_code?: string;
     city: string;
