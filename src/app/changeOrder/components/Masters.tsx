@@ -1,9 +1,10 @@
+//Вернемся к использованию когда внедрим слоты
+
 import { useMastersByTeam } from "@/hooks/findMastersByTeam"
 import { useGetSchedule } from '@/hooks/useGetSchedule'
 import { useOrderStore } from "@/stores/orderStore"
 import { AlertTriangle, CheckCircle, ChevronDown, Plus, Trash, Users, Wrench } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import MasterSchedule from '../../changeOrder/components/MasterSchedule'
 
 interface Master {
     name: string;
@@ -426,15 +427,15 @@ export default function Masters({  city }: MastersProps) {
             </div>
 
             {/* Показываем расписание если выбран мастер */}
-            {formData.masterName && schedule && (
+            {/* {formData.masterName && schedule && (
                 <MasterSchedule 
                     masterName={formData.masterName}
                     selectedDate={formData.date}
                     schedule={schedule}
                     onSlotsChange={handleSlotsChange}
                 />
-            )}
-            
+            )} */}
+            {/* Вернемся к использованию когда внедрим слоты */}
 
             
             {/* Показываем информацию о совместимости или предупреждение */}

@@ -370,6 +370,7 @@ export interface OrderState extends BufferState {
     getUnclaimedRequests: () => Promise<OrderForClaim[]>;
     setUnclaimedRequests: (requests: OrderForClaim[]) => void;
     loadUnclaimedRequests: (team: string) => Promise<void>;
+    transferClaimedRequest: (claim_Object_Id: string,toTeam:string) => Promise<boolean>;
     // ===== УТИЛИТЫ =====
     setCurrentUser: (user: { userId: string; userName: string; userAt: string; team: string; manager_id: string,shift: boolean }) => void;
     setLoading: (loading: boolean) => void;
@@ -392,6 +393,10 @@ export interface OrderState extends BufferState {
     searchOrders: (query: string) => Promise<void>;
     clearSearchResults: () => void;
     viewNotMyOrder: (orderId: string) => Promise<void>;
+
+    // ===== ДЕЙСТВИЯ С КОНТАКТАМИ =====
+    getPhoneNumbers: (call_id: string) => Promise<string[]>;
+    getRecords: (call_id: string) => Promise<string[]>;
 
         //==== ДЕЙСТВИЯ С СМЕНОЙ =====
         toggleShift: () => void;
@@ -459,7 +464,7 @@ export const useOrderStore = create<OrderState>()(
             // ===== ПАГИНАЦИЯ =====
             pagination: null,
             currentPage: 1,
-            ordersPerPage: 10,
+            ordersPerPage: 6,
 
             // ===== 🆕 WEBSOCKET НАЧАЛЬНЫЕ ЗНАЧЕНИЯ =====
             socket: null,
@@ -595,6 +600,24 @@ export const useOrderStore = create<OrderState>()(
                 }
             },
 
+            transferClaimedRequest: async (claim_Object_Id: string,toTeam:string) => {
+                const { currentUser } = get();
+                if (!currentUser) {
+                    set({ bufferError: 'Пользователь не авторизован' });
+                    return false;
+                }
+                try {
+                    const response = await fetch(`https://bot-crm-backend-756832582185.us-central1.run.app/api/current-available-claims/transferClaim`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ claim_Object_Id: claim_Object_Id, toTeam: toTeam, at: currentUser.userAt })
+                    });
+                } catch (error) {
+                    console.error('❌ Error transferring claimed request:', error);
+                    throw error;
+                }
+                return true;
+            },
 
             // ===== 🆕 WEBSOCKET ДЕЙСТВИЯ =====
             // Функция для автоматического переподключения
@@ -2390,7 +2413,7 @@ export const useOrderStore = create<OrderState>()(
 
                     // Параметры пагинации с значениями по умолчанию
                     const page = paginationParams?.page ?? currentPage ?? 1;
-                    const limit = paginationParams?.limit ?? ordersPerPage ?? 10;
+                    const limit = paginationParams?.limit ?? ordersPerPage ?? 6;
 
                     if (!currentUser) {
                         const storageUser = getSessionStorageJSON("currentUser", null);
@@ -2579,6 +2602,18 @@ export const useOrderStore = create<OrderState>()(
                     console.error('⚠ [DEBUG] Ошибка при поиске дублей заказов:', e);
                     return [];
                 }
+            },
+            getPhoneNumbers: async (call_id: string) => {
+                const response = await fetch(
+                    `https://bot-crm-backend-756832582185.us-central1.run.app/api/phoneNumbers?call_id=${call_id}`
+                );
+                return response.json();
+            },
+            getRecords: async (call_id: string) => {
+                const response = await fetch(
+                    `https://bot-crm-backend-756832582185.us-central1.run.app/api/records?call_id=${call_id}`
+                );
+                return response.json();
             },
 
             // ===== ФУНКЦИИ ПОИСКА =====

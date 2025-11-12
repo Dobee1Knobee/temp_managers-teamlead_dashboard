@@ -1,6 +1,6 @@
-import { ApiOrder } from '@/types/api';
-import { Order } from '@/types/domain';
-import { OrderAdapter } from './orderAdapter';
+import { ApiOrder } from '@/types/api'
+import { Order } from '@/types/domain'
+import { OrderAdapter } from './orderAdapter'
 
 const BASE_URL = 'https://bot-crm-backend-756832582185.us-central1.run.app/api';
 
@@ -29,7 +29,7 @@ export class OrderService {
     static async getUserOrders(
         username: string,
         page: number = 1,
-        limit: number = 10
+        limit: number = 6
     ): Promise<{orders: Order[], pagination: PaginationInfo}> {
         const response = await fetch(
             `${BASE_URL}/user/myOrders/${username}?page=${page}&limit=${limit}`

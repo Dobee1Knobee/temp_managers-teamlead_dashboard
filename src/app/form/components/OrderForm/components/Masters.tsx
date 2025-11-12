@@ -1,9 +1,9 @@
+//Вернемся к использованию когда внедрим слоты
 import { useMastersByTeam } from "@/hooks/findMastersByTeam"
 import { useGetSchedule } from '@/hooks/useGetSchedule'
 import { useOrderStore } from "@/stores/orderStore"
 import { AlertTriangle, CheckCircle, ChevronDown, Plus, Trash, Users, Wrench } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import MasterSchedule from '../components/MasterSchedule'
 
 interface Master {
     name: string;
@@ -227,9 +227,9 @@ export default function Masters({ team, city }: MastersProps) {
         return allSlotsAvailable;
     };
     
-    // Фильтруем мастеров, которые могут быть дополнительными
+    // Показываем всех мастеров команды, кроме уже выбранного первого мастера
     const availableAdditionalMasters = filteredMasters.filter(master => 
-        master.name !== formData.masterName && isMasterAvailableAsAdditional(master.name)
+        master.name !== formData.masterName
     );
     
     return (
@@ -313,7 +313,10 @@ export default function Masters({ team, city }: MastersProps) {
                   
                 </div>       
                 {isAdditionalTechVisible &&
-                (<button className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg text-center flex flex-col items-center transition-colors duration-200 shadow-sm hover:shadow-md" onClick={() => {setIsAddingExtraTech(true); setIsAdditionalTechVisible(false)}}>       
+                (<button className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg text-center flex flex-col items-center transition-colors duration-200 shadow-sm hover:shadow-md" onClick={() => {
+                    setIsAddingExtraTech(true);
+                    setIsAdditionalTechVisible(false);
+                }}>       
                     <Plus className="w-3 h-3" />
                     <span className="text-sm font-medium ">Add master</span>
                 </button>)
@@ -330,7 +333,8 @@ export default function Masters({ team, city }: MastersProps) {
                         </div>
                     </div>
                 )}
-                {isAddingExtraTech || (formData.additionalTechName && formData.additionalTechName.length > 0) ? (
+                {/* Показываем второго техника когда isAddingExtraTech = true или когда уже выбран additionalTechName */}
+                {(isAddingExtraTech || (formData.additionalTechName && formData.additionalTechName.length > 0)) && (
                 <div className='flex flex-row gap-3 items-stretch mt-3'>
                     <div className="relative w-96">
                         <select
@@ -350,12 +354,12 @@ export default function Masters({ team, city }: MastersProps) {
                             {availableAdditionalMasters.length > 0 ? (
                                 availableAdditionalMasters.map((master, index) => (
                                     <option key={index} value={master.name}>
-                                        {master.name} - {master.city} ✅ Available
+                                        {master.name} - {master.city}
                                     </option>
                                 ))
                             ) : (
                                 <option value="" disabled>
-                                    No compatible masters available
+                                    No masters available
                                 </option>
                             )}
                         </select>
@@ -375,7 +379,7 @@ export default function Masters({ team, city }: MastersProps) {
                         <span className="text-sm font-medium">Remove</span>
                     </button>
                 </div>       
-                ) : null}
+                )}
                 {formData.additionalTechName && (
                     <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-center text-sm text-gray-700">
@@ -383,35 +387,20 @@ export default function Masters({ team, city }: MastersProps) {
                             <span className="font-medium">Selected:</span>
                             <span className="ml-1 text-gray-900">{formData.additionalTechName}</span>
                             <span className="ml-2 text-gray-500">in {city}</span>
-                            {firstMasterSelectedSlots.size > 0 && (
-                                <div className="ml-3 flex items-center">
-                                    {isMasterAvailableAsAdditional(formData.additionalTechName) ? (
-                                        <>
-                                            <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                                            <span className="text-green-600 text-xs font-medium">Совместим</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <AlertTriangle className="w-4 h-4 text-red-500 mr-1" />
-                                            <span className="text-red-600 text-xs font-medium">Несовместим</span>
-                                        </>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     </div>
                 )}
             </div>
-
+                {/* Вернемся к использованию когда внедрим слоты */}
             {/* Показываем расписание если выбран мастер */}
-            {formData.masterName && schedule && (
+            {/* {formData.masterName && schedule && (
                 <MasterSchedule 
                     masterName={formData.masterName}
                     selectedDate={formData.date}
                     schedule={schedule}
                     onSlotsChange={handleSlotsChange}
                 />
-            )}
+            )} */}
             
 
             

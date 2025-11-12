@@ -1,4 +1,5 @@
 import ClientInfoModal from "@/app/myOrders/components/ClientInfoModal"
+import ModalScheduleGeneration from "@/app/myOrders/components/ModalScheduleGeneration"
 import TransferOrderModal from "@/app/myOrders/components/TransferOrderModal"
 import { useOrderStore } from "@/stores/orderStore"
 import { OrderStatus } from "@/types/api"
@@ -6,6 +7,7 @@ import Order from "@/types/formDataType"
 import {
     ArrowRight,
     Calendar,
+    CalendarCheck,
     Edit,
     Eye,
     FileText,
@@ -57,7 +59,7 @@ const statusLabel: Record<OrderStatus, string> = {
     [OrderStatus.NIGHT_EARLY]: 'Ночной ранний',
     [OrderStatus.NEED_CONFIRMATION]: 'Нужно подтверждение',
     [OrderStatus.NEED_APPROVAL]: 'Нужно согласование',
-    [OrderStatus.COMPLETED]: 'Завершен',
+    [OrderStatus.COMPLETED]: 'Оформлен',
     [OrderStatus.CALL_TOMORROW]: 'Перезвон завтра',
     [OrderStatus.ORDER_STATUS]: 'Оформлен',
 }
@@ -71,9 +73,8 @@ const ruToEnum: Record<string, OrderStatus> = {
     'Ночной ранний': OrderStatus.NIGHT_EARLY,
     'Нужно подтверждение': OrderStatus.NEED_CONFIRMATION,
     'Нужно согласование': OrderStatus.NEED_APPROVAL,
-    'Завершен': OrderStatus.COMPLETED,
+    'Оформлен': OrderStatus.COMPLETED,
     'Перезвон завтра': OrderStatus.CALL_TOMORROW,
-    'Оформлен': OrderStatus.ORDER_STATUS,
 }
 
 export type OrderCardProps = {
@@ -88,6 +89,7 @@ export default function OrderCardPretty({ order }: OrderCardProps) {
     const [statusOpen, setStatusOpen] = useState(false)
     const [clientModalOpen, setClientModalOpen] = useState(false)
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
 
     const changeStatus = useOrderStore(state => state.changeStatus)
     const updateOrder  = useOrderStore(state => state.getByLeadID);
@@ -337,6 +339,16 @@ export default function OrderCardPretty({ order }: OrderCardProps) {
                         >
                             <Edit size={16} className="text-gray-600 hover:text-green-600" />
                         </button>
+                        {(order.text_status === "Оформлен" || order.text_status === "Нужно подтверждение") && (
+                            <button
+                                onClick={() => setIsScheduleModalOpen(true)}
+                                className="hover:opacity-80 transition-opacity"
+                                aria-label="Calendar Check"
+                                title="Генерация расписания"
+                            >
+                                <CalendarCheck size={16} className="text-gray-600 hover:text-green-600" />
+                            </button>
+                        )}
 
                         {/* ВАЖНО: теперь кнопка передачи реально открывает модалку */}
                         {order.text_status === "Другой регион" && (
@@ -370,6 +382,12 @@ export default function OrderCardPretty({ order }: OrderCardProps) {
                 clientPhone={order.phone}
                 clientId={order.client_id}
                 orderId={order.order_id}
+            />
+
+            <ModalScheduleGeneration
+                isOpen={isScheduleModalOpen}
+                onClose={() => setIsScheduleModalOpen(false)}
+                order={order}
             />
         </>
     )

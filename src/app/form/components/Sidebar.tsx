@@ -6,16 +6,14 @@ import { useOrderStore } from '@/stores/orderStore'
 import Order from "@/types/formDataType"
 import {
     AlertTriangle,
-    Calendar,
-    Car,
     ChevronLeft,
     ChevronRight,
     ClipboardList,
+    ContactIcon,
     FileBarChart,
     FileText,
     Folder,
     Lock,
-    MessageSquare,
     Phone,
     Plus,
     Search,
@@ -29,7 +27,7 @@ import ConfidentialViewModal from './ConfidentialViewModal'
 export default function Sidebar() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<
-        'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'messages' | 'managers' | 'clientlogs' | 'needs-action' | null
+        'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'messages' | 'managers' | 'clientlogs' | 'needs-action' | 'contacts' | null
     >(null);
 
     // Состояния для поиска
@@ -108,7 +106,7 @@ export default function Sidebar() {
     }, [searchQuery]);
 
     // Navigation handler
-    const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'messages' | 'managers' | 'clientlogs' | 'needs-action') => {
+    const handleClick = (tab: 'new-order' | 'buffer' | 'my-orders' | 'search' | 'visit' | 'schedule' | 'messages' | 'managers' | 'clientlogs' | 'needs-action' | 'contacts') => {
         setActiveTab(tab);
 
         switch (tab) {
@@ -121,12 +119,12 @@ export default function Sidebar() {
             case 'my-orders':
                 router.push('/myOrders');
                 break;
-            case 'visit':
-                router.push('/visits');
-                break;
-            case 'schedule':
-                router.push('/schedule');
-                break;
+            // case 'visit':
+            //     router.push('/visits');
+            //     break;
+            // case 'schedule':
+            //     router.push('/schedule');
+            //     break;
             case 'search':
                 if(!isExpanded) {
                     setIsExpanded(true);
@@ -143,6 +141,9 @@ export default function Sidebar() {
                 break;
             case 'needs-action':
                 router.push('/needs-action');
+                break;
+            case 'contacts':
+                router.push('/contacts');
                 break;
         }
     };
@@ -353,7 +354,7 @@ export default function Sidebar() {
                                         </span>
                                     )}
                                 </button>
-                                <button
+                                {/* <button
                                     onClick={() => handleClick('messages')}
                                     className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
                                         activeTab === 'messages'
@@ -363,7 +364,7 @@ export default function Sidebar() {
                                 >
                                     <MessageSquare size={14} />
                                     <span>Messages</span>
-                                </button>
+                                </button> */}
                                 <button
                                     onClick={() => handleClick('my-orders')}
                                     className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
@@ -376,6 +377,17 @@ export default function Sidebar() {
                                     <span>My Orders</span>
                                 </button>
                                 <button
+                                    onClick={() => handleClick('contacts')}
+                                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
+                                        activeTab === 'contacts'
+                                            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
+                                            : 'text-gray-700 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                    }`}
+                                >
+                                    <ContactIcon size={14} />
+                                    <span>Contacts</span>
+                                </button>
+                                {/* <button
                                     onClick={() => handleClick('visit')}
                                     className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
                                         activeTab === 'visit'
@@ -385,8 +397,8 @@ export default function Sidebar() {
                                 >
                                     <Car size={14} />
                                     <span>Visits</span>
-                                </button>
-                                <button
+                                </button> */}
+                                {/* <button
                                     onClick={() => handleClick('schedule')}
                                     className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
                                         activeTab === 'schedule'
@@ -396,7 +408,7 @@ export default function Sidebar() {
                                 >
                                     <Calendar size={14} />  
                                     <span>Schedule</span>
-                                </button>
+                                </button> */}
                                 <button
                                     onClick={() => handleClick('search')}
                                     className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 text-xs ${
@@ -630,7 +642,7 @@ export default function Sidebar() {
                                     </span>
                                 )}
                             </button>
-                            <button
+                            {/* <button
                                 onClick={() => handleClick('visit')}
                                 className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
                                     activeTab === 'visit'
@@ -640,8 +652,19 @@ export default function Sidebar() {
                                 title="Visit"
                             >
                                 <Car size={16} />
-                            </button>
+                            </button> */}
                             <button
+                                onClick={() => handleClick('contacts')}
+                                className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                                    activeTab === 'contacts'
+                                        ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-200'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:border-gray-200 border border-transparent'
+                                }`}
+                                title="Contacts"
+                            >
+                            <ContactIcon size={16} />
+                            </button>
+                            {/* <button
                                     onClick={() => handleClick('messages')}
                                     className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
                                         activeTab === 'messages'
@@ -650,8 +673,8 @@ export default function Sidebar() {
                                     }`}
                                 >
                                     <MessageSquare size={14} />
-                                </button>
-                            <button
+                                </button> */}
+                            {/* <button
                                 onClick={() => handleClick('schedule')}
                                 className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
                                         activeTab === 'schedule'
@@ -661,7 +684,7 @@ export default function Sidebar() {
                                 title="New Order"
                             >
                                 <Calendar size={16} />
-                            </button>
+                            </button> */}
                             <button
                                 onClick={() => handleClick('search')}
                                 className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${

@@ -241,6 +241,7 @@ export default function ClaimedOrderCard({ order, onShowPhone, }: ClaimedOrderCa
                     <Eye size={16} />
                     {showDetails ? 'Hide details' : 'Show details'}
                 </button>
+            
                 
                 {/* Кнопка обработки */}
                 <button 
@@ -264,7 +265,7 @@ export default function ClaimedOrderCard({ order, onShowPhone, }: ClaimedOrderCa
                         </>
                     )}
                 </button>
-
+              
             </div>
         </div>
             
