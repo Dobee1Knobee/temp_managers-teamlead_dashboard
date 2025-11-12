@@ -770,7 +770,70 @@ export const useOrderStore = create<OrderState>()(
                 if (!(socket as any).__handlersBound) {
                     (socket as any).__handlersBound = true;
                     console.log('🔗 Навешиваем обработчики событий на новый сокет');
-
+                    socket.on("order-claimed-by-user", (data: any) => {
+                        console.log('🔔 order-claimed-by-user:', data);
+                        
+                        try {
+                            const { currentUser } = get();
+                            
+                            // Находим заявку в списке по claim_Object_Id для получения client_id
+                            const currentRequests = get().unclaimedRequests;
+                            const claimedRequest = currentRequests.find(req => 
+                                String((req as any)?._id) === String(data?.claim_Object_Id)
+                            );
+                            
+                            // Динамически обновляем список незаклейменных заявок
+                            const updatedRequests = currentRequests.filter(req => {
+                                // Удаляем заявку по _id (claim_Object_Id)
+                                return String((req as any)?._id) !== String(data?.claim_Object_Id);
+                            });
+                            
+                            set({ unclaimedRequests: updatedRequests });
+                            
+                            // Показываем уведомление для всех в команде (кроме того, кто взял заявку)
+                            const isCurrentUser = currentUser && data?.at && 
+                                                 String(currentUser.userAt) === String(data?.at);
+                            if (isCurrentUser) {
+                                // Уведомление для того, кто взял заявку
+                                toast.success('✅ Заявка успешно взята вами', {
+                                    duration: 3000,
+                                    icon: '✅',
+                                });
+                            } else if (!isCurrentUser && !claimedRequest){
+                                // Уведомление для других пользователей команды
+                                const clientId = claimedRequest 
+                                    ? ((claimedRequest as any)?.client_id ?? (claimedRequest as any)?.orderData?.client_id)
+                                    : null;
+                                const displayId = clientId ?? data?.claim_Object_Id?.slice(-6) ?? 'unknown';
+                                const userName = data?.userName ?? data?.at ?? 'пользователем';
+                                
+                                toast(`✨ ${data.message || `Заявка #${displayId} взята ${userName}`}`, {
+                                    icon: '👤',
+                                    
+                                    duration: 4000,
+                                    style: {
+                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        color: '#fff',
+                                        fontWeight: '600',
+                                        borderRadius: '12px',
+                                        padding: '16px',
+                                        boxShadow: '0 4px 14px 0 rgba(102, 126, 234, 0.39)',
+                                    },
+                                });
+                            }
+                            
+                            // Дополнительно обновляем список с сервера через небольшую задержку для синхронизации
+                            if (currentUser?.team) {
+                                setTimeout(() => {
+                                    get().loadUnclaimedRequests(currentUser.team);
+                                }, 500);
+                            }
+                            
+                            console.log('✅ Динамически обновлен список незаклейменных заявок');
+                        } catch (error) {
+                            console.error('❌ Ошибка при обновлении списка заявок:', error);
+                        }
+                    });
                     socket.on('connect', () => {
                         console.log('✅ WebSocket подключен!', socket.id);
                         console.log(' Connection details:', {
@@ -2604,8 +2667,12 @@ export const useOrderStore = create<OrderState>()(
                 }
             },
             getPhoneNumbers: async (call_id: string) => {
+                const { currentUser } = get();
+                const at = currentUser?.userAt.startsWith('@')
+                    ? currentUser?.userAt.slice(1)
+                    : currentUser?.userAt;
                 const response = await fetch(
-                    `https://bot-crm-backend-756832582185.us-central1.run.app/api/phoneNumbers?call_id=${call_id}`
+                    `https://bot-crm-backend-756832582185.us-central1.run.app/api/getPhoneByClientId/${call_id}/${at}`
                 );
                 return response.json();
             },
