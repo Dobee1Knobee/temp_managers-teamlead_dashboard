@@ -397,6 +397,7 @@ export interface OrderState extends BufferState {
     // ===== ДЕЙСТВИЯ С КОНТАКТАМИ =====
     getPhoneNumbers: (call_id: string) => Promise<string[]>;
     getRecords: (call_id: string) => Promise<string[]>;
+    generateClientId: (phone:string) => Promise<string>;
 
         //==== ДЕЙСТВИЯ С СМЕНОЙ =====
         toggleShift: () => void;
@@ -2677,8 +2678,23 @@ export const useOrderStore = create<OrderState>()(
                 return response.json();
             },
             getRecords: async (call_id: string) => {
+                const { currentUser } = get();
+                const at = currentUser?.userAt.startsWith('@')
+                    ? currentUser?.userAt.slice(1)
+                    : currentUser?.userAt;
                 const response = await fetch(
-                    `https://bot-crm-backend-756832582185.us-central1.run.app/api/records?call_id=${call_id}`
+                    `https://bot-crm-backend-756832582185.us-central1.run.app/api/getRecords/${call_id}/${at}`
+                );
+
+                return response.json();
+            },
+            generateClientId: async (phone: string) => {
+                const { currentUser } = get();
+                const at = currentUser?.userAt.startsWith('@')
+                    ? currentUser?.userAt.slice(1)
+                    : currentUser?.userAt;
+                const response = await fetch(
+                    `https://bot-crm-backend-756832582185.us-central1.run.app/api/createClientIdByPhone/${phone}/${at}`
                 );
                 return response.json();
             },
