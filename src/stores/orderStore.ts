@@ -241,7 +241,8 @@ export interface OrderState extends BufferState {
         userAt: string;
         team: string;
         manager_id: string;
-        shift: boolean;
+        onShift: boolean;
+        onBreak: boolean;
     } | null;
    
 
@@ -372,7 +373,7 @@ export interface OrderState extends BufferState {
     loadUnclaimedRequests: (team: string) => Promise<void>;
     transferClaimedRequest: (claim_Object_Id: string,toTeam:string) => Promise<boolean>;
     // ===== УТИЛИТЫ =====
-    setCurrentUser: (user: { userId: string; userName: string; userAt: string; team: string; manager_id: string,shift: boolean }) => void;
+    setCurrentUser: (user: { userId: string; userName: string; userAt: string; team: string; manager_id: string,onShift: boolean,onBreak: boolean }) => void;
     setLoading: (loading: boolean) => void;
     setError: (error: string | null) => void;
     reset: () => void;
@@ -1566,30 +1567,19 @@ export const useOrderStore = create<OrderState>()(
             },
 
             toggleShift: async () => {
-                const currentShift = get().currentUser?.shift;
                 const currentUser = get().currentUser;
 
                 if (!currentUser) {
                     throw new Error('User not found');
                 }
 
-                const endpoint = currentShift 
-                    ? 'https://zoom-webhook.lahandy.com/admin/shift_end'
-                    : 'https://zoom-webhook.lahandy.com/admin/shift_start';
-                
                 // Формируем payload согласно API
                 const payload = {
-                    event: currentShift ? "phone.shift_end" : "phone.shift_start",
-                    payload: {
-                        object: {
-                            name: currentUser.userName || "",
-                            at: currentUser.userAt || ""
-                        }
-                    }
+                    at: currentUser.userAt,
                 };
                 
-                const res = await fetch(endpoint, {
-                    method: 'GET',
+                const res = await fetch("https://bot-crm-backend-756832582185.us-central1.run.app/api/user/shift", {
+                    method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json'
                     },
@@ -1603,17 +1593,26 @@ export const useOrderStore = create<OrderState>()(
                 const result = await res.json();
                 console.log('✅ Shift toggled:', result);
                 
-                // Обновляем состояние и sessionStorage
-                const newShiftState = !currentShift;
+                // Используем значение onShift из ответа бэкенда
+                const newShiftState = result.onShift ?? false;
+                
+                // Обновляем sessionStorage
                 setSessionStorageJSON('shift', newShiftState);
                 
                 // Обновляем состояние пользователя в сторе
                 set((state) => ({
                     currentUser: state.currentUser ? {
                         ...state.currentUser,
-                        shift: newShiftState
+                        onShift: newShiftState
                     } : null
                 }));
+                
+                // Показываем уведомление об успехе
+                if (result.message) {
+                    toast.success(result.message, {
+                        duration: 3000,
+                    });
+                }
                 
                 return result;
             },

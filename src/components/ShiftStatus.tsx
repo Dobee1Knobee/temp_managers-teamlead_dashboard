@@ -8,10 +8,15 @@ interface ShiftStatusProps {
 }
 
 export default function ShiftStatus({ showDetails = true, variant = 'sidebar', className = '' }: ShiftStatusProps) {
-    const { shift, toggleShift } = useOrderStore();
+    const shift = useOrderStore((state) => state.currentUser?.onShift ?? false);
+    const toggleShift = useOrderStore((state) => state.toggleShift);
 
-    const handleToggle = () => {
-        toggleShift();
+    const handleToggle = async () => {
+        try {
+            await toggleShift();
+        } catch (error) {
+            console.error('Failed to toggle shift:', error);
+        }
     };
 
     if (variant === 'header') {
